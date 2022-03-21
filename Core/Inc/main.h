@@ -85,6 +85,14 @@ void Error_Handler(void);
 #define RMII_TXD0_GPIO_Port 	GPIOG
 
 
+#define UART3_RX_BUFFER_SIZE	255
+
+typedef struct PrintMessage {
+  char body[20];
+  int count;
+} PrintMessage;
+
+
 #ifdef __cplusplus
 }
 #endif

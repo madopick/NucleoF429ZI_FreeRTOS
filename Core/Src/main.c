@@ -46,11 +46,16 @@ DMA_HandleTypeDef hdma_spi1_rx;
 DMA_HandleTypeDef hdma_spi1_tx;
 
 UART_HandleTypeDef huart3;
+uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];                		// UART3 RCV
+uint8_t uart3_buff_len;												// UART3 RCv Length
 
 //OS
-osThreadId defaultThreadHandle, LEDThreadHandle, ButtonThreadHandle;
+osThreadId defaultThreadHandle, LEDThreadHandle, ButtonThreadHandle, UARTThreadHandle;
 osSemaphoreId osSemaphore;
 EventGroupHandle_t xEventGroup = 0;
+
+QueueHandle_t delay_queue;
+QueueHandle_t msg_queue;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -63,6 +68,7 @@ static void MX_SPI1_Init(void);
 
 void StartDefaultThread(void const * argument);
 void LED_Thread(void const *argument);
+void UART_Thread(void const *argument);
 void Button_Thread(void const *argument);
 
 /* Private user code ---------------------------------------------------------*/
@@ -103,10 +109,10 @@ void Button_Thread(void const *argument);
 
 
 
-/**
+/************************************************************
   * @brief  The application entry point.
   * @retval int
-  */
+  ***********************************************************/
 int main(void)
 {
   /* MCU Configuration--------------------------------------------------------*/
@@ -158,6 +164,10 @@ int main(void)
   osThreadDef(LEDTask, LED_Thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
   LEDThreadHandle = osThreadCreate (osThread(LEDTask), (void *) osSemaphore);
 
+  /* UART Thread definition */
+  osThreadDef(UARTTask, UART_Thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+  UARTThreadHandle = osThreadCreate (osThread(UARTTask), NULL);
+
   /* Button Thread definition */
   osThreadDef(ButtonTask, Button_Thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
   ButtonThreadHandle = osThreadCreate (osThread(ButtonTask), (void *) osSemaphore);
@@ -177,6 +187,36 @@ int main(void)
 
 //============================================= RTOS TASK =================================================//
 //=============================================  SECTION  =================================================//
+
+
+/************************************************************
+  * @brief  LED thread
+  * @param  semaphore
+  * @retval None
+  ************************************************************/
+void UART_Thread(void const *argument)
+{
+	PrintMessage rcv_msg;
+//	char c;
+//	char buf[buf_len];
+//	uint8_t idx = 0;
+//	uint8_t cmd_len = strlen(command);
+//	int led_delay;
+
+	// Clear whole buffer
+	//memset(buf, 0, buf_len);
+
+	for(;;)
+	{
+		// Check if there's a message in the queue (do not block)
+		if (xQueueReceive(msg_queue, (void *)&rcv_msg, 0) == pdTRUE) {
+		  printf(rcv_msg.body);
+		  //printf((char)rcv_msg.count);
+		}
+
+
+	}
+}
 
 
 /************************************************************
@@ -471,6 +511,9 @@ static void MX_USART3_UART_Init(void)
   {
     Error_Handler();
   }
+
+  __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
+  HAL_UART_Receive_DMA(&huart3, (uint8_t*)uart3Rcv_buff, UART3_RX_BUFFER_SIZE);
 }
 
 
