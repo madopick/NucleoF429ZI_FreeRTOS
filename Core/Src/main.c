@@ -44,6 +44,8 @@ DMA_HandleTypeDef hdma_i2c1_tx;
 SPI_HandleTypeDef hspi1;
 DMA_HandleTypeDef hdma_spi1_rx;
 DMA_HandleTypeDef hdma_spi1_tx;
+DMA_HandleTypeDef hdma_usart3_tx;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 UART_HandleTypeDef huart3;
 uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];                		// UART3 RCV
@@ -209,12 +211,12 @@ void UART_Thread(void const *argument)
 	for(;;)
 	{
 		// Check if there's a message in the queue (do not block)
-		if (xQueueReceive(msg_queue, (void *)&rcv_msg, 0) == pdTRUE) {
-		  printf(rcv_msg.body);
-		  //printf((char)rcv_msg.count);
-		}
+//		if (xQueueReceive(msg_queue, (void *)&rcv_msg, portMAX_DELAY) == pdTRUE) {
+//		  printf(rcv_msg.body);
+//		  //printf((char)rcv_msg.count);
+//		}
 
-
+		osDelay(1000);
 	}
 }
 
@@ -236,7 +238,7 @@ void LED_Thread(void const *argument)
   {
     count = 0;
 
-    printf("blink LED for 2S \r\n");
+    printf("blink LED1 for 2S \r\n");
     while (count <= 10)
     {
     	HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
@@ -245,7 +247,7 @@ void LED_Thread(void const *argument)
     }
 
     /* Turn off LED */
-    printf("turn of LED for 5S \r\n");
+    printf("turn of LEDS for 5S \r\n");
     HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
@@ -268,7 +270,7 @@ void LED_Thread(void const *argument)
 	if( uxBits  == ( BIT_0 | BIT_4 ) )
 	{
 		/*both bits were set. */
-		printf("Both set \r\n\n\n");
+		printf("Both set (LED2 ON)\r\n\n\n");
 		count = 0;
 		while (count <= 10)
 		{
@@ -295,7 +297,7 @@ void LED_Thread(void const *argument)
 	else if( ( uxBits & BIT_5 ) != 0 )
 	{
 		/* BIT_5 was set. */
-		printf("BIT5 set \r\n\n\n");
+		printf("BIT5 set, (LED3 ON) \r\n\n\n");
 		uxBits = xEventGroupClearBits( xEventGroup,  BIT_5);
 
 		count = 0;

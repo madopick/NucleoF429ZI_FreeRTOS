@@ -43,7 +43,11 @@ extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
 extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim1;
+
 extern UART_HandleTypeDef huart3;
+extern DMA_HandleTypeDef hdma_usart3_rx;
+extern uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];
+extern uint8_t uart3_buff_len;
 
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
@@ -194,6 +198,19 @@ void DMA2_Stream3_IRQHandler(void)
 }
 
 
+
+//======================================= UART 3 OPERATION ==================================================//
+
+/***************************************************************
+  * @brief This function handles DMA1 stream1 global interrupt.
+  * @param  None
+  * @retval None
+  **************************************************************/
+void DMA1_Stream1_IRQHandler(void)
+{
+	HAL_DMA_IRQHandler(&hdma_usart3_rx);
+}
+
 /********************************************************
   * @brief This function handles USART3 interrupt.
   ******************************************************/
@@ -212,10 +229,10 @@ void USART3_IRQHandler(void)
 		uint8_t data_length  = 255 - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx);
 
 
-#if 0
-		printf("UART2 Receive (%d) \r\n",data_length);
-		for(uint8_t i = 0; i < uart2_buff_len;i++)
-			printf("[%d] : %c \r\n",i,uart2Rcv_buff[i]);
+#if 1
+		printf("UART3 Receive (%d) \r\n",data_length);
+		for(uint8_t i = 0; i < uart3_buff_len;i++)
+			printf("[%d] : %c \r\n",i,uart3Rcv_buff[i]);
 		printf("\r\n");
 #endif
 
@@ -227,7 +244,7 @@ void USART3_IRQHandler(void)
 #endif
 
 		//Zero Receiving Buffer
-		memset(uart3Rcv_buff, '\0', sizeof(uart2Rcv_buff));
+		memset(uart3Rcv_buff, '\0', sizeof(uart3Rcv_buff));
 		uart3_buff_len = data_length;
 		data_length = 0;
 
