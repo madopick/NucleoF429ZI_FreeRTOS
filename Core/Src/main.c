@@ -27,7 +27,9 @@
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
-
+#define BIT_0	( 1 << 0 )
+#define BIT_4	( 1 << 4 )
+#define BIT_5	( 1 << 5 )
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -48,7 +50,7 @@ UART_HandleTypeDef huart3;
 //OS
 osThreadId defaultThreadHandle, LEDThreadHandle, ButtonThreadHandle;
 osSemaphoreId osSemaphore;
-
+EventGroupHandle_t xEventGroup = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -125,9 +127,13 @@ int main(void)
 
   printf("\r\nHW Initialization OK\r\n");
 
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
+  /* Event Group */
+
+  xEventGroup = xEventGroupCreate();
+  if( xEventGroup == NULL )
+  {
+	  printf("Event Group Fail!!!\r\n");
+  }
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   osSemaphoreDef(SEM);
@@ -181,7 +187,10 @@ int main(void)
 void LED_Thread(void const *argument)
 {
   uint32_t count = 0;
-  osSemaphoreId semaphore = (osSemaphoreId) argument;
+  //osSemaphoreId semaphore = (osSemaphoreId) argument;
+
+  const TickType_t xTicksToWait = 100 / portTICK_PERIOD_MS;
+  EventBits_t uxBits;
 
   for(;;)
   {
@@ -197,12 +206,76 @@ void LED_Thread(void const *argument)
 
     /* Turn off LED */
     printf("turn of LED for 5S \r\n");
+    HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+
 
     /* Release the semaphore */
     //osSemaphoreRelease(semaphore);
 
     osDelay(5000);
+
+
+    /* Wait a maximum of 100ms for either bit 0 or bit 4 in event group.  Clear the bits before exiting. */
+	uxBits = xEventGroupWaitBits(
+			xEventGroup,   		/* The event group being tested. */
+			BIT_0 | BIT_4, 		/* The bits within the event group to wait for. */
+			pdFALSE,        	/* BIT_0 & BIT_4 not cleared before returning. */
+			pdFALSE,       		/* Don't wait for both bits, either bit will do. */
+			xTicksToWait );		/* Wait a maximum of 100ms for either bit to be set. */
+
+	if( uxBits  == ( BIT_0 | BIT_4 ) )
+	{
+		/*both bits were set. */
+		printf("Both set \r\n\n\n");
+		count = 0;
+		while (count <= 10)
+		{
+			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			osDelay(200);
+			count++;
+		}
+
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+		uxBits = xEventGroupClearBits( xEventGroup,  BIT_0 | BIT_4 );
+	}
+	else if( ( uxBits & BIT_0 ) != 0 )
+	{
+		/* BIT_0 was set. */
+		uxBits = xEventGroupSetBits(xEventGroup,BIT_4);
+		printf("BIT0 set \r\n\n\n");
+	}
+	else if( ( uxBits & BIT_4 ) != 0 )
+	{
+		/* BIT_4 was set. */
+		uxBits = xEventGroupSetBits(xEventGroup,BIT_0);
+		printf("BIT4 set \r\n\n\n");
+	}
+	else if( ( uxBits & BIT_5 ) != 0 )
+	{
+		/* BIT_5 was set. */
+		printf("BIT5 set \r\n\n\n");
+		uxBits = xEventGroupClearBits( xEventGroup,  BIT_5);
+
+		count = 0;
+		while (count <= 10)
+		{
+			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+			osDelay(200);
+			count++;
+		}
+
+		 HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+	}
+	else
+	{
+		/* Timeout */
+		printf("timeout xEventGroup\r\n\n\n");
+		uxBits = xEventGroupSetBits(
+				  xEventGroup,
+				  BIT_0);
+	}
 
   }
 }
@@ -226,6 +299,8 @@ void Button_Thread(void const *argument)
 		/* Try to obtain the semaphore. */
 		if(osSemaphoreWait(semaphore , portMAX_DELAY) == osOK){
 			printf("run button interrupt\r\n");
+
+			xEventGroupSetBits(xEventGroup,BIT_5);
 		}
 	}
 
@@ -462,6 +537,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull 	= GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
 }
 
