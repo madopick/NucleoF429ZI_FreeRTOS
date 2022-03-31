@@ -30,8 +30,8 @@
 
 /* Private define ------------------------------------------------------------*/
 #define BIT_0	( 1 << 0 )
-#define BIT_4	( 1 << 4 )
-#define BIT_5	( 1 << 5 )
+#define BIT_1	( 1 << 1 )
+#define BIT_2	( 1 << 2 )
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -67,8 +67,11 @@ xQueueHandle msg_queue 		= NULL;
 /*************** Semaphore Handlers (osSemaphoreId) ***************/
 SemaphoreHandle_t osSemaphore;
 
-/*************** EventGroupHandle_t Handlers ***************/
+/*************** EventGroup Handlers ***************/
 EventGroupHandle_t xEventGroup = 0;
+
+/*************** Timer Handlers 	 ***************/
+TimerHandle_t osTimers;
 
 
 static const uint8_t delay_queue_len 	= 5;   	 // Size of delay_queue
@@ -90,7 +93,7 @@ void Default_Thread(void *argument);
 void LED_Thread(void *argument);
 void UART_Thread(void *argument);
 void Button_Thread(void const *argument);
-
+void vTimerCallback5SecExpired( TimerHandle_t xTimer );
 
 /* Private user code ---------------------------------------------------------*/
 #ifdef SWO_DEBUG
@@ -154,8 +157,19 @@ int main(void)
 
   printf("\r\nHW Initialization OK\r\n");
 
-  /* Event Group */
+  /* RTOS_TIMER */
+  osTimers = xTimerCreate("timer5Sec", 					/* name */
+		  	  	  	  	  pdMS_TO_TICKS(5000), 			/* period/time */
+						  pdTRUE, 						/* auto reload */
+						  (void*)0, 					/* timer ID */
+						  vTimerCallback5SecExpired); 	/* callback */
+  if (osTimers==NULL) {
+	  printf("OS Timer Fail!!!\r\n");
+  }else{
+	  xTimerStart(osTimers, 0);
+  }
 
+  /* RTOS_EVENT_GROUP */
   xEventGroup = xEventGroupCreate();
   if( xEventGroup == NULL )
   {
@@ -205,6 +219,29 @@ int main(void)
 
 
 /************************************************************
+  * @brief  TIMER OS callback
+  * @param
+  * @retval
+  ************************************************************/
+void vTimerCallback5SecExpired( TimerHandle_t xTimer )
+ {
+	static uint8_t ulCount;
+
+	if (xTimer == osTimers){
+		 ulCount++;
+		 printf("timer callback %d \r\n", ulCount);
+
+		 if(ulCount >= 10){
+			 printf("OS TIMER STOPED \r\n");
+			 xTimerStop( xTimer, 0 );
+			 ulCount = 0;
+		 }
+	}
+ }
+
+
+
+/************************************************************
   * @brief  LED thread
   * @param  semaphore
   * @retval None
@@ -245,39 +282,24 @@ void LED_Thread(void *argument)
 
   for(;;)
   {
-    count = 0;
-
-    //printf("blink LED1 for 2S \r\n");
-    while (count <= 20)
-    {
-    	HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-    	osDelay(200);
-    	count++;
-    }
-
     /* Turn off LED */
     HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
-
-    vTaskDelay(2000);
-
-
     /* Wait a maximum of 100ms for either bit 0,4 or bit 5 in event group.  Clear the bits before exiting. */
 	uxBits = xEventGroupWaitBits(
 			xEventGroup,   		/* The event group being tested. */
-			BIT_0 | BIT_4, 		/* The bits within the event group to wait for. */
-			pdFALSE,        	/* BIT_0 & BIT_4 not cleared before returning. */
+			BIT_0 | BIT_1, 		/* The bits within the event group to wait for. */
+			pdFALSE,        	/* BIT_0 & BIT_1 not cleared before returning. */
 			pdFALSE,       		/* Don't wait for both bits, either bit will do. */
 			xTicksToWait );		/* Wait a maximum of 100ms for either bit to be set. */
 
-	if( uxBits  == ( BIT_0 | BIT_4 ) )
+	if( uxBits  == ( BIT_0 | BIT_1 ) )
 	{
 		/*both bits were set. */
-		//printf("Both set (LED2 ON)\r\n\n\n");
 		count = 0;
-		while (count <= 10)
+		while (count <= 20)
 		{
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			vTaskDelay(200);
@@ -285,7 +307,7 @@ void LED_Thread(void *argument)
 		}
 
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-		uxBits = xEventGroupClearBits( xEventGroup,  BIT_0 | BIT_4 );
+		uxBits = xEventGroupClearBits( xEventGroup,  BIT_0 | BIT_1 );
 
 		// Construct message and send
 		PrintMessage msg;
@@ -303,22 +325,30 @@ void LED_Thread(void *argument)
 	else if( ( uxBits & BIT_0 ) != 0 )
 	{
 		/* BIT_0 was set. */
-		uxBits = xEventGroupSetBits(xEventGroup, BIT_4);
+		uxBits = xEventGroupSetBits(xEventGroup, BIT_1);
 		//printf("BIT0 set \r\n\n\n");
+
+		count = 0;
+		while (count <= 20)
+		{
+			HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+			vTaskDelay(200);
+			count++;
+		}
 	}
-	else if( ( uxBits & BIT_4 ) != 0 )
+	else if( ( uxBits & BIT_1 ) != 0 )
 	{
-		/* BIT_4 was set. */
+		/* BIT_1 was set. */
 		uxBits = xEventGroupSetBits(xEventGroup, BIT_0);
 		//printf("BIT4 set \r\n\n\n");
 	}
-	else if( ( uxBits & BIT_5 ) != 0 )
+	else if( ( uxBits & BIT_2 ) != 0 )
 	{
-		/* BIT_5 was set. */
-		uxBits = xEventGroupClearBits(xEventGroup,  BIT_5);
+		/* BIT_2 was set. */
+		uxBits = xEventGroupClearBits(xEventGroup,  BIT_2);
 
 		count = 0;
-		while (count <= 10)
+		while (count <= 20)
 		{
 			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
 			vTaskDelay(200);
@@ -353,7 +383,7 @@ void Button_Thread(void const *argument)
 		/* Try to obtain the semaphore. */
 		if( xSemaphoreTake( osSemaphore,portMAX_DELAY ) == pdTRUE ){
 			printf("run button interrupt\r\n");
-			xEventGroupSetBits(xEventGroup,BIT_5);
+			xEventGroupSetBits(xEventGroup,BIT_2);
 
 		}
 		vTaskDelay(100);
