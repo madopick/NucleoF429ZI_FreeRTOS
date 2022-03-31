@@ -21,12 +21,7 @@
 #include "main.h"
 #include "cmsis_os.h"					// temporary disable using CMSIS API
 
-#include "FreeRTOS.h"
-#include "task.h"
-#include "timers.h"
-#include "queue.h"
-#include "semphr.h"
-#include "event_groups.h"
+
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -69,8 +64,12 @@ xTaskHandle LEDThreadHandle;
 xQueueHandle delay_queue 	= NULL;
 xQueueHandle msg_queue 		= NULL;
 
-osSemaphoreId osSemaphore;
+/*************** Semaphore Handlers (osSemaphoreId) ***************/
+SemaphoreHandle_t osSemaphore;
+
+/*************** EventGroupHandle_t Handlers ***************/
 EventGroupHandle_t xEventGroup = 0;
+
 
 static const uint8_t delay_queue_len 	= 5;   	 // Size of delay_queue
 static const uint8_t msg_queue_len 		= 5;     // Size of msg_queue
@@ -164,8 +163,15 @@ int main(void)
   }
 
   /* RTOS_SEMAPHORES */
-  osSemaphoreDef(SEM);
-  osSemaphore = osSemaphoreCreate(osSemaphore(SEM) , 1);
+//  osSemaphoreDef(SEM);
+//  osSemaphore = osSemaphoreCreate(osSemaphore(SEM) , 1);
+
+  osSemaphore = xSemaphoreCreateBinary();
+
+  if( osSemaphore == NULL )
+  {
+	  printf("Semaphore creation Fail!!!\r\n");
+  }
 
   /* RTOS_QUEUE */
   delay_queue 	= xQueueCreate(delay_queue_len, sizeof(PrintMessage));
@@ -334,6 +340,16 @@ void LED_Thread(void const *argument)
 		/* BIT_5 was set. */
 		//printf("BIT5 set, (LED3 ON) \r\n\n\n");
 		uxBits = xEventGroupClearBits( xEventGroup,  BIT_5);
+
+		count = 0;
+		while (count <= 10)
+		{
+			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+			vTaskDelay(200);
+			count++;
+		}
+
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 	}
 	else
 	{
@@ -356,19 +372,17 @@ void LED_Thread(void const *argument)
   ************************************************************/
 void Button_Thread(void const *argument)
 {
-
-  osSemaphoreId semaphore = (osSemaphoreId) argument;
-
   for(;;)
   {
-	if (semaphore != NULL)
+	if (osSemaphore != NULL)
 	{
 		/* Try to obtain the semaphore. */
-		if(osSemaphoreWait(semaphore , portMAX_DELAY) == osOK){
-			//printf("run button interrupt\r\n");
+		if( xSemaphoreTake( osSemaphore,portMAX_DELAY ) == pdTRUE ){
+			printf("run button interrupt\r\n");
 			xEventGroupSetBits(xEventGroup,BIT_5);
-			//xSemaphoreGive(semaphore);
+
 		}
+		vTaskDelay(100);
 	}
 
   }
@@ -623,40 +637,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if (GPIO_Pin == USER_Btn_Pin)
   {
-	  //printf("Button INT\r\n");
-	  //osSemaphoreRelease(osSemaphore);
+	  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-//	  portBASE_TYPE taskWoken = pdFALSE;
-//	  if (xSemaphoreGiveFromISR(osSemaphore, &taskWoken) != pdTRUE) {
-//		  printf("Sem Fail\r\n");
-//	  }
+	  /* Unblock the task by releasing the semaphore. */
+	  xSemaphoreGiveFromISR( osSemaphore, &xHigherPriorityTaskWoken );
 
-	  /*******************************************************************************
-	   * The xHigherPriorityTaskWoken parameter must be initialized to pdFALSE as
-	   * it will get set to pdTRUE inside the interrupt safe API function if a
-	   * context switch is required.
-	   *******************************************************************************/
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	  /* If xHigherPriorityTaskWoken was set to true, we should yield.  */
+	  portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 
-		// Construct message and send
-		PrintMessage msg;
-		strcpy(msg.body, "GPIO INT");
-		msg.count = 1;
-
-		if (xQueueSendToFrontFromISR(msg_queue, &msg, &xHigherPriorityTaskWoken) == pdPASS)
-		{
-			printf("INT Handler queue sent\r\n\n");
-		}
-
-		/*****************************************************************************
-		 * Pass the xHigherPriorityTaskWoken value into portEND_SWITCHING_ISR(). If
-		 * xHigherPriorityTaskWoken was set to pdTRUE inside xSemaphoreGiveFromISR()
-		 * then calling portEND_SWITCHING_ISR() will request a context switch. If
-		 * xHigherPriorityTaskWoken is still pdFALSE then calling
-		 * portEND_SWITCHING_ISR() will have no effect
-		 *****************************************************************************/
-
-		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
   }
 }
 

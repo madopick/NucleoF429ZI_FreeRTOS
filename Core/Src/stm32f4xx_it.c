@@ -216,6 +216,8 @@ void DMA1_Stream1_IRQHandler(void)
   ******************************************************/
 void USART3_IRQHandler(void)
 {
+	extern xQueueHandle msg_queue;
+
 	HAL_UART_IRQHandler(&huart3);
 
 	if(RESET != __HAL_UART_GET_FLAG(&huart3, UART_FLAG_IDLE))   //Judging whether it is idle interruption
@@ -230,10 +232,40 @@ void USART3_IRQHandler(void)
 
 
 #if 1
-		printf("UART3 Receive (%d) \r\n",data_length);
-		for(uint8_t i = 0; i < uart3_buff_len;i++)
-			printf("[%d] : %c \r\n",i,uart3Rcv_buff[i]);
-		printf("\r\n");
+//		printf("UART3 Receive (%d) \r\n",data_length);
+//		for(uint8_t i = 0; i < uart3_buff_len;i++)
+//			printf("[%d] : %c \r\n",i,uart3Rcv_buff[i]);
+//		printf("\r\n");
+
+
+		/*******************************************************************************
+		* The xHigherPriorityTaskWoken parameter must be initialized to pdFALSE as
+		* it will get set to pdTRUE inside the interrupt safe API function if a
+		* context switch is required.
+		*******************************************************************************/
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+		// Construct message and send
+		PrintMessage msg;
+		strncpy(msg.body, (char*)uart3Rcv_buff, data_length);
+		msg.count = 1;
+
+		if (xQueueSendToFrontFromISR(msg_queue, &msg, &xHigherPriorityTaskWoken) == pdPASS)
+		{
+			printf("INT Handler queue sent\r\n\n");
+		}
+
+		/*****************************************************************************
+		 * Pass the xHigherPriorityTaskWoken value into portEND_SWITCHING_ISR(). If
+		 * xHigherPriorityTaskWoken was set to pdTRUE inside xSemaphoreGiveFromISR()
+		 * then calling portEND_SWITCHING_ISR() will request a context switch. If
+		 * xHigherPriorityTaskWoken is still pdFALSE then calling
+		 * portEND_SWITCHING_ISR() will have no effect
+		 *****************************************************************************/
+
+		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
+
+
 #endif
 
 #ifdef SHELL_CMD
