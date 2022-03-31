@@ -87,8 +87,8 @@ static void MX_SPI1_Init(void);
 
 /*************** Task Function ***************/
 void Default_Thread(void *argument);
-void LED_Thread(void const *argument);
-void UART_Thread(void const *argument);
+void LED_Thread(void *argument);
+void UART_Thread(void *argument);
 void Button_Thread(void const *argument);
 
 
@@ -163,11 +163,7 @@ int main(void)
   }
 
   /* RTOS_SEMAPHORES */
-//  osSemaphoreDef(SEM);
-//  osSemaphore = osSemaphoreCreate(osSemaphore(SEM) , 1);
-
   osSemaphore = xSemaphoreCreateBinary();
-
   if( osSemaphore == NULL )
   {
 	  printf("Semaphore creation Fail!!!\r\n");
@@ -183,22 +179,10 @@ int main(void)
 	  printf("Queue creation OK\r\n");
   }
 
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-
   /* RTOS TASKS */
   xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityBelowNormal, &defaultThreadHandle);
-
-  /* LED Thread definition */
-  osThreadDef(LEDTask, LED_Thread, osPriorityHigh, 0, configMINIMAL_STACK_SIZE);
-  LEDThreadHandle = osThreadCreate (osThread(LEDTask), (void *) osSemaphore);
-
-  /* UART Thread definition */
-  osThreadDef(UARTTask, UART_Thread,  osPriorityAboveNormal, 0, configMINIMAL_STACK_SIZE);
-  UARTThreadHandle = osThreadCreate (osThread(UARTTask), NULL);
+  xTaskCreate(LED_Thread, "LED_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityHigh, &LEDThreadHandle);
+  xTaskCreate(UART_Thread, "UART_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &UARTThreadHandle);
 
   /* Button Thread definition */
   osThreadDef(ButtonTask, Button_Thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
@@ -207,7 +191,6 @@ int main(void)
   /* Start scheduler */
   osKernelStart();
 
-  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   while (1)
   {
@@ -226,14 +209,14 @@ int main(void)
   * @param  semaphore
   * @retval None
   ************************************************************/
-void UART_Thread(void const *argument)
+void UART_Thread(void *argument)
 {
 	struct PrintMessage rcv_msg;
 	uint32_t TickDelay = pdMS_TO_TICKS(3000);
 
 	for(;;)
 	{
-		// See if there's a message in the queue
+		// check message in the queue
 		if (xQueueReceive(msg_queue, (void *)&rcv_msg, portMAX_DELAY) != pdTRUE) {
 			printf("Error in Receiving from Queue\r\n\n");
 
@@ -254,11 +237,9 @@ void UART_Thread(void const *argument)
   * @param  semaphore
   * @retval None
   ************************************************************/
-void LED_Thread(void const *argument)
+void LED_Thread(void *argument)
 {
   uint32_t count = 0;
-  //osSemaphoreId semaphore = (osSemaphoreId) argument;
-
   const TickType_t xTicksToWait = 100 / portTICK_PERIOD_MS;
   EventBits_t uxBits;
 
@@ -275,14 +256,10 @@ void LED_Thread(void const *argument)
     }
 
     /* Turn off LED */
-    //printf("turn off LEDS for 2S \r\n");
     HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 
-
-    /* Release the semaphore */
-    //osSemaphoreRelease(semaphore);
 
     vTaskDelay(2000);
 
@@ -326,20 +303,19 @@ void LED_Thread(void const *argument)
 	else if( ( uxBits & BIT_0 ) != 0 )
 	{
 		/* BIT_0 was set. */
-		uxBits = xEventGroupSetBits(xEventGroup,BIT_4);
+		uxBits = xEventGroupSetBits(xEventGroup, BIT_4);
 		//printf("BIT0 set \r\n\n\n");
 	}
 	else if( ( uxBits & BIT_4 ) != 0 )
 	{
 		/* BIT_4 was set. */
-		uxBits = xEventGroupSetBits(xEventGroup,BIT_0);
+		uxBits = xEventGroupSetBits(xEventGroup, BIT_0);
 		//printf("BIT4 set \r\n\n\n");
 	}
 	else if( ( uxBits & BIT_5 ) != 0 )
 	{
 		/* BIT_5 was set. */
-		//printf("BIT5 set, (LED3 ON) \r\n\n\n");
-		uxBits = xEventGroupClearBits( xEventGroup,  BIT_5);
+		uxBits = xEventGroupClearBits(xEventGroup,  BIT_5);
 
 		count = 0;
 		while (count <= 10)
@@ -355,9 +331,7 @@ void LED_Thread(void const *argument)
 	{
 		/* Timeout */
 		//printf("timeout xEventGroup\r\n\n\n");
-		uxBits = xEventGroupSetBits(
-				  xEventGroup,
-				  BIT_0);
+		uxBits = xEventGroupSetBits(xEventGroup,BIT_0);
 	}
 
   }
