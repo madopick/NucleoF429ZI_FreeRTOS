@@ -19,7 +19,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
+#include "cmsis_os.h"					// temporary disable using CMSIS API
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "queue.h"
+#include "semphr.h"
+#include "event_groups.h"
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -51,13 +58,23 @@ UART_HandleTypeDef huart3;
 uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];                		// UART3 RCV
 uint8_t uart3_buff_len;												// UART3 RCv Length
 
-//OS
-osThreadId defaultThreadHandle, LEDThreadHandle, ButtonThreadHandle, UARTThreadHandle;
+///FRERTOS
+/*************** Task Handlers (osThreadId) 	***************/
+xTaskHandle defaultThreadHandle;
+xTaskHandle ButtonThreadHandle;
+xTaskHandle UARTThreadHandle;
+xTaskHandle LEDThreadHandle;
+
+/*************** Queue Handlers (QueueHandle_t) ***************/
+xQueueHandle delay_queue 	= NULL;
+xQueueHandle msg_queue 		= NULL;
+
 osSemaphoreId osSemaphore;
 EventGroupHandle_t xEventGroup = 0;
 
-QueueHandle_t delay_queue;
-QueueHandle_t msg_queue;
+static const uint8_t delay_queue_len 	= 5;   	 // Size of delay_queue
+static const uint8_t msg_queue_len 		= 5;     // Size of msg_queue
+uint8_t sMsgcounter = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -68,10 +85,13 @@ static void MX_I2C1_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_SPI1_Init(void);
 
-void StartDefaultThread(void const * argument);
+
+/*************** Task Function ***************/
+void Default_Thread(void *argument);
 void LED_Thread(void const *argument);
 void UART_Thread(void const *argument);
 void Button_Thread(void const *argument);
+
 
 /* Private user code ---------------------------------------------------------*/
 #ifdef SWO_DEBUG
@@ -143,31 +163,35 @@ int main(void)
 	  printf("Event Group Fail!!!\r\n");
   }
 
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* RTOS_SEMAPHORES */
   osSemaphoreDef(SEM);
   osSemaphore = osSemaphoreCreate(osSemaphore(SEM) , 1);
+
+  /* RTOS_QUEUE */
+  delay_queue 	= xQueueCreate(delay_queue_len, sizeof(PrintMessage));
+  msg_queue 	= xQueueCreate(msg_queue_len, sizeof(PrintMessage));
+  if( ( delay_queue == NULL ) || ( msg_queue == NULL ) )
+  {
+	  printf("Queue creation Fail!!!\r\n");
+  }else{
+	  printf("Queue creation OK\r\n");
+  }
 
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
 
-  /* Create the thread(s) */
-
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultThread, osPriorityBelowNormal, 0, 128);
-  defaultThreadHandle = osThreadCreate(osThread(defaultTask), NULL);
+  /* RTOS TASKS */
+  xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityBelowNormal, &defaultThreadHandle);
 
   /* LED Thread definition */
-  osThreadDef(LEDTask, LED_Thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+  osThreadDef(LEDTask, LED_Thread, osPriorityHigh, 0, configMINIMAL_STACK_SIZE);
   LEDThreadHandle = osThreadCreate (osThread(LEDTask), (void *) osSemaphore);
 
   /* UART Thread definition */
-  osThreadDef(UARTTask, UART_Thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
+  osThreadDef(UARTTask, UART_Thread,  osPriorityAboveNormal, 0, configMINIMAL_STACK_SIZE);
   UARTThreadHandle = osThreadCreate (osThread(UARTTask), NULL);
 
   /* Button Thread definition */
@@ -198,26 +222,24 @@ int main(void)
   ************************************************************/
 void UART_Thread(void const *argument)
 {
-	PrintMessage rcv_msg;
-//	char c;
-//	char buf[buf_len];
-//	uint8_t idx = 0;
-//	uint8_t cmd_len = strlen(command);
-//	int led_delay;
-
-	// Clear whole buffer
-	//memset(buf, 0, buf_len);
+	struct PrintMessage rcv_msg;
+	uint32_t TickDelay = pdMS_TO_TICKS(3000);
 
 	for(;;)
 	{
-		// Check if there's a message in the queue (do not block)
-//		if (xQueueReceive(msg_queue, (void *)&rcv_msg, portMAX_DELAY) == pdTRUE) {
-//		  printf(rcv_msg.body);
-//		  //printf((char)rcv_msg.count);
-//		}
+		// See if there's a message in the queue
+		if (xQueueReceive(msg_queue, (void *)&rcv_msg, portMAX_DELAY) != pdTRUE) {
+			printf("Error in Receiving from Queue\r\n\n");
 
-		osDelay(1000);
+		}else{
+
+			printf("UART Thread RUN from %s\r\n\n",rcv_msg.body);
+		}
+
+		vTaskDelay(TickDelay);
 	}
+
+
 }
 
 
@@ -238,8 +260,8 @@ void LED_Thread(void const *argument)
   {
     count = 0;
 
-    printf("blink LED1 for 2S \r\n");
-    while (count <= 10)
+    //printf("blink LED1 for 2S \r\n");
+    while (count <= 20)
     {
     	HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
     	osDelay(200);
@@ -247,7 +269,7 @@ void LED_Thread(void const *argument)
     }
 
     /* Turn off LED */
-    printf("turn of LEDS for 5S \r\n");
+    //printf("turn off LEDS for 2S \r\n");
     HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
@@ -256,10 +278,10 @@ void LED_Thread(void const *argument)
     /* Release the semaphore */
     //osSemaphoreRelease(semaphore);
 
-    osDelay(5000);
+    vTaskDelay(2000);
 
 
-    /* Wait a maximum of 100ms for either bit 0 or bit 4 in event group.  Clear the bits before exiting. */
+    /* Wait a maximum of 100ms for either bit 0,4 or bit 5 in event group.  Clear the bits before exiting. */
 	uxBits = xEventGroupWaitBits(
 			xEventGroup,   		/* The event group being tested. */
 			BIT_0 | BIT_4, 		/* The bits within the event group to wait for. */
@@ -270,50 +292,53 @@ void LED_Thread(void const *argument)
 	if( uxBits  == ( BIT_0 | BIT_4 ) )
 	{
 		/*both bits were set. */
-		printf("Both set (LED2 ON)\r\n\n\n");
+		//printf("Both set (LED2 ON)\r\n\n\n");
 		count = 0;
 		while (count <= 10)
 		{
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-			osDelay(200);
+			vTaskDelay(200);
 			count++;
 		}
 
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 		uxBits = xEventGroupClearBits( xEventGroup,  BIT_0 | BIT_4 );
+
+		// Construct message and send
+		PrintMessage msg;
+		strcpy(msg.body, "LED Thread");
+		msg.count = 1;
+
+		if (xQueueSend(msg_queue, &msg, portMAX_DELAY) == pdPASS){
+			printf("\r\n\nsent msg queue\r\n");
+		}
+
+		uint32_t TickDelay = pdMS_TO_TICKS(2000);
+		vTaskDelay(TickDelay);
+
 	}
 	else if( ( uxBits & BIT_0 ) != 0 )
 	{
 		/* BIT_0 was set. */
 		uxBits = xEventGroupSetBits(xEventGroup,BIT_4);
-		printf("BIT0 set \r\n\n\n");
+		//printf("BIT0 set \r\n\n\n");
 	}
 	else if( ( uxBits & BIT_4 ) != 0 )
 	{
 		/* BIT_4 was set. */
 		uxBits = xEventGroupSetBits(xEventGroup,BIT_0);
-		printf("BIT4 set \r\n\n\n");
+		//printf("BIT4 set \r\n\n\n");
 	}
 	else if( ( uxBits & BIT_5 ) != 0 )
 	{
 		/* BIT_5 was set. */
-		printf("BIT5 set, (LED3 ON) \r\n\n\n");
+		//printf("BIT5 set, (LED3 ON) \r\n\n\n");
 		uxBits = xEventGroupClearBits( xEventGroup,  BIT_5);
-
-		count = 0;
-		while (count <= 10)
-		{
-			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-			osDelay(200);
-			count++;
-		}
-
-		 HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 	}
 	else
 	{
 		/* Timeout */
-		printf("timeout xEventGroup\r\n\n\n");
+		//printf("timeout xEventGroup\r\n\n\n");
 		uxBits = xEventGroupSetBits(
 				  xEventGroup,
 				  BIT_0);
@@ -340,9 +365,9 @@ void Button_Thread(void const *argument)
 	{
 		/* Try to obtain the semaphore. */
 		if(osSemaphoreWait(semaphore , portMAX_DELAY) == osOK){
-			printf("run button interrupt\r\n");
-
+			//printf("run button interrupt\r\n");
 			xEventGroupSetBits(xEventGroup,BIT_5);
+			//xSemaphoreGive(semaphore);
 		}
 	}
 
@@ -356,12 +381,12 @@ void Button_Thread(void const *argument)
   * @retval None
   ***********************************************************/
 
-void StartDefaultThread(void const * argument)
+void Default_Thread(void * argument)
 {
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(100);
   }
 }
 
@@ -599,13 +624,39 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
   if (GPIO_Pin == USER_Btn_Pin)
   {
 	  //printf("Button INT\r\n");
-
 	  //osSemaphoreRelease(osSemaphore);
 
-	  portBASE_TYPE taskWoken = pdFALSE;
-	  if (xSemaphoreGiveFromISR(osSemaphore, &taskWoken) != pdTRUE) {
-		  printf("Sem Fail\r\n");
-	  }
+//	  portBASE_TYPE taskWoken = pdFALSE;
+//	  if (xSemaphoreGiveFromISR(osSemaphore, &taskWoken) != pdTRUE) {
+//		  printf("Sem Fail\r\n");
+//	  }
+
+	  /*******************************************************************************
+	   * The xHigherPriorityTaskWoken parameter must be initialized to pdFALSE as
+	   * it will get set to pdTRUE inside the interrupt safe API function if a
+	   * context switch is required.
+	   *******************************************************************************/
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+		// Construct message and send
+		PrintMessage msg;
+		strcpy(msg.body, "GPIO INT");
+		msg.count = 1;
+
+		if (xQueueSendToFrontFromISR(msg_queue, &msg, &xHigherPriorityTaskWoken) == pdPASS)
+		{
+			printf("INT Handler queue sent\r\n\n");
+		}
+
+		/*****************************************************************************
+		 * Pass the xHigherPriorityTaskWoken value into portEND_SWITCHING_ISR(). If
+		 * xHigherPriorityTaskWoken was set to pdTRUE inside xSemaphoreGiveFromISR()
+		 * then calling portEND_SWITCHING_ISR() will request a context switch. If
+		 * xHigherPriorityTaskWoken is still pdFALSE then calling
+		 * portEND_SWITCHING_ISR() will have no effect
+		 *****************************************************************************/
+
+		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
   }
 }
 
