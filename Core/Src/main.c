@@ -32,6 +32,7 @@
 #define BIT_0	( 1 << 0 )
 #define BIT_1	( 1 << 1 )
 #define BIT_2	( 1 << 2 )
+#define BIT_3	( 1 << 3 )
 /* Private macro -------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -235,6 +236,7 @@ void vTimerCallback5SecExpired( TimerHandle_t xTimer )
 			 printf("OS TIMER STOPED \r\n");
 			 xTimerStop( xTimer, 0 );
 			 ulCount = 0;
+			 xEventGroupSetBits(xEventGroup,BIT_3);
 		 }
 	}
  }
@@ -322,7 +324,7 @@ void LED_Thread(void *argument)
 		vTaskDelay(TickDelay);
 
 	}
-	else if( ( uxBits & BIT_0 ) != 0 )
+	else if ((( uxBits & BIT_0 ) != 0) && (( uxBits & (BIT_2|BIT_3)) == 0))
 	{
 		/* BIT_0 was set. */
 		uxBits = xEventGroupSetBits(xEventGroup, BIT_1);
@@ -336,13 +338,13 @@ void LED_Thread(void *argument)
 			count++;
 		}
 	}
-	else if( ( uxBits & BIT_1 ) != 0 )
+	else if((( uxBits & BIT_1 ) != 0 ) && (( uxBits & (BIT_2|BIT_3)) == 0))
 	{
 		/* BIT_1 was set. */
 		uxBits = xEventGroupSetBits(xEventGroup, BIT_0);
 		//printf("BIT4 set \r\n\n\n");
 	}
-	else if( ( uxBits & BIT_2 ) != 0 )
+	else if(( uxBits & BIT_2 ) != 0 )
 	{
 		/* BIT_2 was set. */
 		uxBits = xEventGroupClearBits(xEventGroup,  BIT_2);
@@ -356,6 +358,22 @@ void LED_Thread(void *argument)
 		}
 
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+	}
+	else if( ( uxBits & BIT_3 ) != 0 )
+	{
+		/* BIT_3 was set. */
+		uxBits = xEventGroupClearBits(xEventGroup,  BIT_3);
+		xTimerStart(osTimers, 0);
+
+		count = 0;
+		while (count <= 20)
+		{
+			HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+			vTaskDelay(200);
+			count++;
+		}
 	}
 	else
 	{
@@ -388,7 +406,6 @@ void Button_Thread(void const *argument)
 		}
 		vTaskDelay(100);
 	}
-
   }
 }
 
