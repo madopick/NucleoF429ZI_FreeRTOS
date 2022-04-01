@@ -68,6 +68,9 @@ xQueueHandle msg_queue 		= NULL;
 /*************** Semaphore Handlers (osSemaphoreId) ***************/
 SemaphoreHandle_t osSemaphore;
 
+/*************** Mutex Handlers ***************/
+SemaphoreHandle_t mutexSemaphore;
+
 /*************** EventGroup Handlers ***************/
 EventGroupHandle_t xEventGroup = 0;
 
@@ -280,6 +283,9 @@ int main(void)
 	  printf("Semaphore creation Fail!!!\r\n");
   }
 
+  /* RTOS MUTEX */
+  mutexSemaphore = xSemaphoreCreateMutex();
+
   /* RTOS_QUEUE */
   delay_queue 	= xQueueCreate(delay_queue_len, sizeof(PrintMessage));
   msg_queue 	= xQueueCreate(msg_queue_len, sizeof(PrintMessage));
@@ -443,13 +449,21 @@ void LED_Thread(void *argument)
 		/* BIT_2 was set. */
 		uxBits = xEventGroupClearBits(xEventGroup,  BIT_2);
 
-		count = 0;
-		while (count <= 20)
-		{
-			HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-			vTaskDelay(200);
-			count++;
+		if(xSemaphoreTake(mutexSemaphore, (TickType_t)10) == pdTRUE ){
+			printf("Mutex hold by LED\r\n");
+
+			count = 0;
+			while (count <= 20)
+			{
+				HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+				vTaskDelay(200);
+				count++;
+			}
+
+			xSemaphoreGive(mutexSemaphore);
 		}
+
+
 
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 	}
@@ -532,7 +546,11 @@ void Default_Thread(void * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1000);
+	  if(xSemaphoreTake(mutexSemaphore, (TickType_t)10) == pdTRUE ){
+		  //printf("Default Task\r\n");
+		  xSemaphoreGive(mutexSemaphore);
+	  }
+	  osDelay(1000);
   }
 }
 
