@@ -58,7 +58,7 @@
 #define configUSE_PREEMPTION                     1
 #define configSUPPORT_STATIC_ALLOCATION          1
 #define configSUPPORT_DYNAMIC_ALLOCATION         1
-#define configUSE_IDLE_HOOK                      0
+#define configUSE_IDLE_HOOK                      1
 #define configUSE_TICK_HOOK                      0
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
@@ -70,6 +70,15 @@
 #define configUSE_MUTEXES                        1
 #define configQUEUE_REGISTRY_SIZE                8
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION  1
+
+#define configUSE_MALLOC_FAILED_HOOK			 1
+#define configIDLE_SHOULD_YIELD					 1
+#define configCHECK_FOR_STACK_OVERFLOW			 2
+
+#define configGENERATE_RUN_TIME_STATS       	 1
+#define configUSE_TRACE_FACILITY            	 1
+#define configUSE_STATS_FORMATTING_FUNCTIONS     1
+
 /* USER CODE BEGIN MESSAGE_BUFFER_LENGTH_TYPE */
 /* Defaults to size_t for backward compatibility, but can be changed
    if lengths will always be less than the number of bytes in a size_t. */
@@ -138,6 +147,12 @@ standard names. */
               to prevent overwriting SysTick_Handler defined within STM32Cube HAL */
 
 #define xPortSysTickHandler SysTick_Handler
+
+
+extern void vConfigureTimerForRunTimeStats(void);
+extern uint32_t tim3_get_counter(void);
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS()    vConfigureTimerForRunTimeStats()
+#define portGET_RUN_TIME_COUNTER_VALUE()            tim3_get_counter()
 
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */

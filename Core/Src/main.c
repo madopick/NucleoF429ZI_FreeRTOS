@@ -50,7 +50,9 @@ DMA_HandleTypeDef hdma_spi1_tx;
 DMA_HandleTypeDef hdma_usart3_tx;
 DMA_HandleTypeDef hdma_usart3_rx;
 
-UART_HandleTypeDef huart3;
+UART_HandleTypeDef 	huart3;
+TIM_HandleTypeDef	htim3;
+
 uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];                		// UART3 RCV
 uint8_t uart3_buff_len;												// UART3 RCv Length
 
@@ -74,9 +76,9 @@ EventGroupHandle_t xEventGroup = 0;
 /*************** Timer Handlers 	 ***************/
 TimerHandle_t osTimers;
 
-
-static const uint8_t delay_queue_len 	= 5;   	 // Size of delay_queue
-static const uint8_t msg_queue_len 		= 5;     // Size of msg_queue
+static volatile uint32_t tim3_counter 		= 0;
+static const 	uint8_t delay_queue_len 	= 5;   	 // Size of delay_queue
+static const 	uint8_t msg_queue_len 		= 5;     // Size of msg_queue
 uint8_t sMsgcounter = 0;
 
 /* Private function prototypes -----------------------------------------------*/
@@ -132,6 +134,97 @@ void vTimerCallback5SecExpired( TimerHandle_t xTimer );
 
 
 
+/****************************************************************************
+ * @brief This function handles TIM3 global interrupt. (Calculate Process)
+ ***************************************************************************/
+uint32_t tim3_get_counter(void)
+{
+	return tim3_counter;
+}
+
+/****************************************************************************
+ * @brief This function handles TIM3 global interrupt. (Calculate Process)
+ ***************************************************************************/
+void vConfigureTimerForRunTimeStats( void )
+{
+	htim3.Instance 					= TIM3;
+	htim3.Init.Prescaler 			= 45-1;			//TIM APB1 is 45 MHZ so divide by 45 get 1MHz, 1us delay
+	htim3.Init.Period 				= 100-1;		//100us timer
+
+	htim3.Init.CounterMode 			= TIM_COUNTERMODE_UP;
+	htim3.Init.ClockDivision 		= TIM_CLOCKDIVISION_DIV1;
+	htim3.Init.AutoReloadPreload 	= TIM_AUTORELOAD_PRELOAD_DISABLE;
+	if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+	{
+		Error_Handler();
+	}
+
+	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
+	{
+		Error_Handler();
+	}
+}
+
+/****************************************************************************
+ * @brief This function handles TIM3 global interrupt. (Calculate Process)
+ ***************************************************************************/
+void TIM3_IRQHandler(void)
+{
+  HAL_TIM_IRQHandler(&htim3);
+}
+
+
+/***************************************************************************
+ * Called if a call to pvPortMalloc() fails because there is insufficient
+ * free memory available in the FreeRTOS heap.  pvPortMalloc() is called
+ * internally by FreeRTOS API functions that create tasks, queues, software
+ * timers, and semaphores.  The size of the FreeRTOS heap is set by the
+ * configTOTAL_HEAP_SIZE configuration constant in FreeRTOSConfig.h.
+ ***************************************************************************/
+void vApplicationMallocFailedHook( void )
+{
+	printf("Malloc Failed!!!\r\n\n");
+	for( ;; );
+}
+/*-----------------------------------------------------------*/
+
+void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
+{
+	//( void ) pcTaskName;
+	//( void ) pxTask;
+
+	printf("stack overflow @%s !!!\r\n\n", pcTaskName);
+
+	/* Run time stack overflow checking is performed if
+	configconfigCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
+	function is called if a stack overflow is detected. */
+	for( ;; );
+}
+/*-----------------------------------------------------------*/
+
+void vApplicationIdleHook( void )
+{
+	volatile size_t xFreeStackSpace;
+
+	/* This function is called on each cycle of the idle task.  In this case it
+	does nothing useful, other than report the amout of FreeRTOS heap that
+	remains unallocated. */
+	xFreeStackSpace = xPortGetFreeHeapSize();
+
+	if( xFreeStackSpace > 100 )
+	{
+		/* By now, the kernel has allocated everything it is going to, so
+		if there is a lot of heap remaining unallocated then
+		the value of configTOTAL_HEAP_SIZE in FreeRTOSConfig.h can be
+		reduced accordingly. */
+	}
+}
+
+
+
+
+
+
 
 
 /************************************************************
@@ -156,6 +249,11 @@ int main(void)
   MX_USART3_UART_Init();
   MX_SPI1_Init();
 
+  SystemCoreClockUpdate();
+  printf("\r\nMCU @ %ld MHz\r\n",SystemCoreClock/1000000);
+  printf("HCLK=%.2f MHz\r\n", (float)HAL_RCC_GetHCLKFreq()/1000000);
+  printf("APB1=%.2f MHz\r\n", (float)HAL_RCC_GetPCLK1Freq()/1000000);
+  printf("APB2=%.2f MHz\r\n", (float)HAL_RCC_GetPCLK2Freq()/1000000);
   printf("\r\nHW Initialization OK\r\n");
 
   /* RTOS_TIMER */
@@ -195,13 +293,13 @@ int main(void)
   }
 
   /* RTOS TASKS */
-  xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityBelowNormal, &defaultThreadHandle);
+  xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityNormal, &defaultThreadHandle);
   xTaskCreate(LED_Thread, "LED_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityHigh, &LEDThreadHandle);
-  xTaskCreate(UART_Thread, "UART_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &UARTThreadHandle);
+  xTaskCreate(UART_Thread, "UART_TASK", 2*configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &UARTThreadHandle);
 
   /* Button Thread definition */
-  osThreadDef(ButtonTask, Button_Thread, osPriorityNormal, 0, configMINIMAL_STACK_SIZE);
-  ButtonThreadHandle = osThreadCreate (osThread(ButtonTask), (void *) osSemaphore);
+  osThreadDef(BUTTON_TASK, Button_Thread, osPriorityRealtime, 0, 2*configMINIMAL_STACK_SIZE);
+  ButtonThreadHandle = osThreadCreate (osThread(BUTTON_TASK), (void *) osSemaphore);
 
   /* Start scheduler */
   osKernelStart();
@@ -257,10 +355,8 @@ void UART_Thread(void *argument)
 	{
 		// check message in the queue
 		if (xQueueReceive(msg_queue, (void *)&rcv_msg, portMAX_DELAY) != pdTRUE) {
-			printf("Error in Receiving from Queue\r\n\n");
-
+			printf("UART QUEUE Error\r\n\n");
 		}else{
-
 			printf("UART Thread RUN from %s\r\n\n",rcv_msg.body);
 		}
 
@@ -400,9 +496,14 @@ void Button_Thread(void const *argument)
 	{
 		/* Try to obtain the semaphore. */
 		if( xSemaphoreTake( osSemaphore,portMAX_DELAY ) == pdTRUE ){
-			printf("run button interrupt\r\n");
+			//printf("btn int\r\n");
 			xEventGroupSetBits(xEventGroup,BIT_2);
 
+			printf("Task\t\tABS Time\t\tTime(%%)\r\n");
+			printf("=============================================\r\n");
+			char stats[128];
+			vTaskGetRunTimeStats(stats);
+			printf("%s\r\n\n\n", stats);
 		}
 		vTaskDelay(100);
 	}
@@ -684,7 +785,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM1) {
-    HAL_IncTick();
+	  HAL_IncTick();
+  }
+  else if (htim->Instance == TIM3) {
+	  tim3_counter++;
+	  //printf("TIM3\r\n");
   }
 }
 
