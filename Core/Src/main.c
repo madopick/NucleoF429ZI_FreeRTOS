@@ -294,11 +294,11 @@ int main(void)
 
   /* RTOS TASKS */
   xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityNormal, &defaultThreadHandle);
-  xTaskCreate(LED_Thread, "LED_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityHigh, &LEDThreadHandle);
-  xTaskCreate(UART_Thread, "UART_TASK", 2*configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &UARTThreadHandle);
+  xTaskCreate(LED_Thread, "LED_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &LEDThreadHandle);
+  xTaskCreate(UART_Thread, "UART_TASK", 3*configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &UARTThreadHandle);
 
   /* Button Thread definition */
-  osThreadDef(BUTTON_TASK, Button_Thread, osPriorityRealtime, 0, 2*configMINIMAL_STACK_SIZE);
+  osThreadDef(BUTTON_TASK, Button_Thread, osPriorityHigh, 0, 3*configMINIMAL_STACK_SIZE);
   ButtonThreadHandle = osThreadCreate (osThread(BUTTON_TASK), (void *) osSemaphore);
 
   /* Start scheduler */
@@ -490,6 +490,11 @@ void LED_Thread(void *argument)
   ************************************************************/
 void Button_Thread(void const *argument)
 {
+  UBaseType_t uxHighWaterMark;
+
+  /* Inspect our own high water mark on entering the task. */
+  uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+
   for(;;)
   {
 	if (osSemaphore != NULL)
@@ -499,9 +504,16 @@ void Button_Thread(void const *argument)
 			//printf("btn int\r\n");
 			xEventGroupSetBits(xEventGroup,BIT_2);
 
-			printf("Task\t\tABS Time\t\tTime(%%)\r\n");
+			/*******************************************************************
+			 * Calling the function will have used some stack space.
+			 * uxTaskGetStackHighWaterMark() to return a
+			 * value = 0 (overflow)
+			 *******************************************************************/
+			uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+
+			printf("Task\t\tABS Time\tTime(%%) | %ld\r\n", uxHighWaterMark);
 			printf("=============================================\r\n");
-			char stats[128];
+			char stats[256];
 			vTaskGetRunTimeStats(stats);
 			printf("%s\r\n\n\n", stats);
 		}
@@ -522,7 +534,7 @@ void Default_Thread(void * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(100);
+    osDelay(1000);
   }
 }
 
