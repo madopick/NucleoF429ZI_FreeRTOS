@@ -57,16 +57,11 @@ extern UART_HandleTypeDef huart3;
 extern struct fwCfg_t userConfig;
 extern struct fwCfg_t *fwCfgp;
 
-//static char argumentNotmatch[] 	= "argument not match\r\n";
-//static char argumentInvalid[] 	= "invalid argument\r\n";
-
-
-
-//static tinysh_cmd_t lsetRFMode={0,"SETRF","		[PP,BB,SS,CC,TT,RR]","[22,01,09,01,04,04]",loraSetRFMode,0,0,0};
-
 
 /**************************************
  * FLASH ERASE COMMAND	  			  *
+ * FERASE [NONE]					  *
+ * Used to erase flash storage area   *
  **************************************/
 static void fEraseCMD(int argc, char **argv)
 {
@@ -74,15 +69,17 @@ static void fEraseCMD(int argc, char **argv)
 		puts("FERASE invalid arguments!\r\n");
 		return;
 	}else{
-		//flashErase();
+		flashErase();
 		puts("FERASE finish!\r\n");
 	}
 }
 
 
-/**************************************
- * FLASH WRITE COMMAND	  			  *
- **************************************/
+/****************************************************
+ * FLASH WRITE COMMAND	  			  				*
+ * FERASE [NONE]					  				*
+ * Used to save values into flash storage area		*
+ ****************************************************/
 static void fWriteCMD(int argc, char **argv)
 {
 	if (argc != 2){
@@ -97,68 +94,73 @@ static void fWriteCMD(int argc, char **argv)
 		printf("DEC (%d): %ld \r\n", len, value);
 
 
-//		HAL_StatusTypeDef status = flashWrite(FLASH_USER_START_ADDR, value);
-//		if(status == HAL_OK){
-//			puts("FWRITE complete!");
-//		}else{
-//			puts("FWRITE fail!");
-//		}
+		HAL_StatusTypeDef status = flashWrite(FLASH_USER_START_ADDR, value);
+		if(status == HAL_OK){
+			puts("FWRITE complete!");
+		}else{
+			puts("FWRITE fail!");
+		}
 
 	}
 }
 
 
-/**************************************
- * FLASH READ COMMAND	  			  *
- **************************************/
+/****************************************************
+ * FLASH READ COMMAND	  			  				*
+ * FREAD [NONE]						  				*
+ * Used to read values from flash storage area		*
+ ****************************************************/
 static void fReadCMD(int argc, char **argv)
 {
 	if (argc > 1){
 		//puts(argumentNotmatch);
 		return;
 	}else{
-//		uint32_t addr = FLASH_USER_START_ADDR;
-//		uint32_t value;
-//		puts("FLASH READ First 60 byte in data area\r\n");
-//		for(uint8_t x = 0; x < 60; x+=4){
-//			value = flashRead(addr);
-//			printf("4 byte: %ld, %d:x%02lX, %d:x%02lX, %d:x%02lX, %d:x%02lX\r\n",
-//					value, x, (value & 0x000000ff), x+1, (value & 0x0000ff00)>>8 , x+2, (value & 0x00ff0000)>>16, x+3, (value & 0xff000000) >> 24);
-//			addr +=4;
-//		}
+		uint32_t addr = FLASH_USER_START_ADDR;
+		uint32_t value;
+		puts("FLASH READ First 60 byte in data area\r\n");
+		for(uint8_t x = 0; x < 60; x+=4){
+			value = flashRead(addr);
+			printf("4 byte: %ld, %d:x%02lX, %d:x%02lX, %d:x%02lX, %d:x%02lX\r\n",
+					value, x, (value & 0x000000ff), x+1, (value & 0x0000ff00)>>8 , x+2, (value & 0x00ff0000)>>16, x+3, (value & 0xff000000) >> 24);
+			addr +=4;
+		}
 
 	}
 }
 
 
 
-/**************************************
- * RAM READ COMMAND	  			      *
- **************************************/
+/************************************************
+ * RAM READ COMMAND	  			      			*
+ * RAMREAD [NONE]					  			*
+ * Used to read values from RAM storage area	*
+ ************************************************/
 static void ram2ReadCMD(int argc, char **argv)
 {
 	uint32_t data32;
 
-	data32 = *(__IO uint32_t *)0x2001F000;
-	printf("0x2001F000: %ld\r\n", data32);
+	data32 = *(__IO uint32_t *)RAM_USER_START_ADDR;
+	printf("x%lx: %ld\r\n", RAM_USER_START_ADDR, data32);
 
-	data32 = *(__IO uint32_t *)0x2001F004;
-	printf("0x2001F004: %ld\r\n", data32);
+	data32 = *(__IO uint32_t *)RAM_USER_START_ADDR+4;
+	printf("x%lx: %ld\r\n", RAM_USER_START_ADDR+4, data32);
 
-	data32 = *(__IO uint32_t *)0x2001F008;
-	printf("0x2001F000: %ld\r\n", data32);
+	data32 = *(__IO uint32_t *)RAM_USER_START_ADDR+8;
+	printf("x%lx: %ld\r\n", RAM_USER_START_ADDR+8, data32);
 
-	//printf("userConfig: %d %d %d %d \r\n", userConfig.u32_crc, userConfig.u32_crcN, userConfig.u32_len, userConfig.u32_lenN);
+	printf("userConfig: %ld %ld %ld %ld \r\n", userConfig.u32_crc, userConfig.u32_crcN, userConfig.u32_len, userConfig.u32_lenN);
 }
 
 
 /**************************************
  * RAM WRITE COMMAND	  			  *
+ * RAMWRITE
  **************************************/
 static void ram2WriteCMD(int argc, char **argv)
 {
 	if (argc != 2){
-		puts("RAMWRITE invalid arguments!\r\n");
+		puts("RAMWRITE accept 2 arg\r\n");
 		return;
 	}else{
 
@@ -169,7 +171,7 @@ static void ram2WriteCMD(int argc, char **argv)
 		printf("DEC (%d): %ld \r\n", len, value);
 
 
-		volatile int *point = (int *)0x2001F000;
+		volatile int *point = (int *)RAM_USER_START_ADDR;
 		*point = value;
 
 		puts("RAMWRITE complete!");
@@ -179,42 +181,43 @@ static void ram2WriteCMD(int argc, char **argv)
 
 /**************************************
  * CONFIG RAM WRITE COMMAND	  		  *
+ * CFGWRITE
  **************************************/
 static void configWriteCMD(int argc, char **argv)
 {
 	if (argc != 7){
-		puts("RAMWRITE invalid arguments!\r\n");
+		printf("CFGWRITE accept 7 arg. (%d)\r\n", argc);
 		return;
 	}else{
 		uint8_t len = strlen((uchar*)&argv[1][0]);
 		uint32_t value = (uint32_t)tinysh_dec((char*)&argv[1][0]);
 		printf("New CRC value (%d): %ld \r\n", len, value);
-		//userConfig.u32_crc = value;
+		userConfig.u32_crc = value;
 
 		len = strlen((uchar*)&argv[2][0]);
 		value = (uint32_t)tinysh_dec((char*)&argv[2][0]);
 		printf("New LEN value (%d): %ld \r\n", len, value);
-		//userConfig.u32_len = value;
+		userConfig.u32_len = value;
 
 		len = strlen((uchar*)&argv[3][0]);
 		value = (uint32_t)tinysh_dec((char*)&argv[3][0]);
 		printf("New crcN value (%d): %ld \r\n", len, value);
-		//userConfig.u32_crcN = value;
+		userConfig.u32_crcN = value;
 
 		len = strlen((uchar*)&argv[4][0]);
 		value = (uint32_t)tinysh_dec((char*)&argv[4][0]);
 		printf("New lenN value (%d): %ld \r\n", len, value);
-		//userConfig.u32_lenN = value;
+		userConfig.u32_lenN = value;
 
 		len = strlen((uchar*)&argv[5][0]);
 		value = (uint32_t)tinysh_dec((char*)&argv[5][0]);
 		printf("New CFG ProID value (%d): %ld \r\n", len, value);
-		//CFG_U16_CFG_PROJECT_ID = value;
+		CFG_U32_CRC = value;
 
 		len = strlen((uchar*)&argv[6][0]);
 		value = (uint32_t)tinysh_dec((char*)&argv[6][0]);
 		printf("New CFG VER value (%d): %ld \r\n", len, value);
-		//CFG_U16_CFG_VER = value;
+		CFG_U16_CFG_VER = value;
 	}
 }
 

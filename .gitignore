@@ -53,3 +53,5 @@ dkms.conf
 *.mk
 Debug/F429ZI_FRTOS.list
 Debug/F429ZI_FRTOS.list
+Debug/
+

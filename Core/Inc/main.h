@@ -39,6 +39,9 @@ extern "C" {
 #include "semphr.h"
 #include "event_groups.h"
 
+#include "flashReadWrite.h"
+#include "fw_cfg.h"
+
 /* Private includes ----------------------------------------------------------*/
 
 /* Exported types ------------------------------------------------------------*/

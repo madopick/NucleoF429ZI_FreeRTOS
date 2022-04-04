@@ -98,6 +98,10 @@ void Button_Thread(void const *argument);
 void vTimerCallback5SecExpired( TimerHandle_t xTimer );
 
 
+///USER RAM for config
+struct fwCfg_t userConfig __attribute__ ((section (".user_ram")));		//Define for allocate space in RAM
+struct fwCfg_t *fwCfgp;
+extern fwCfg_t const fwCfg_default;
 
 
 /****************************************************************************
@@ -114,7 +118,7 @@ uint32_t tim3_get_counter(void)
 void vConfigureTimerForRunTimeStats( void )
 {
 	htim3.Instance 					= TIM3;
-	htim3.Init.Prescaler 			= 45-1;			//TIM APB1 is 45 MHZ so divide by 45 get 1MHz, 1us delay
+	htim3.Init.Prescaler 			= 90-1;			//TIM APB1 is 45*2 MHZ so divide by 90 get 1MHz, 1us delay
 	htim3.Init.Period 				= 100-1;		//100us timer
 
 	htim3.Init.CounterMode 			= TIM_COUNTERMODE_UP;
@@ -154,17 +158,16 @@ void vApplicationMallocFailedHook( void )
 }
 
 
+/************************************************************
+  * @brief  hook function if a stack overflow is detected.
+  * @retval void
+  ***********************************************************/
 void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 {
 	//( void ) pcTaskName;
 	//( void ) pxTask;
 
 	printf("stack overflow @%s !!!\r\n\n", pcTaskName);
-
-	/* Run time stack overflow checking is performed if
-	configconfigCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2.  This hook
-	function is called if a stack overflow is detected. */
-	for( ;; );
 }
 
 
@@ -228,8 +231,14 @@ int main(void)
   UARTPeriph.init(115200);
   MX_SPI1_Init();
 
+  /* initialize userConfig value using fwCfg_default*/
+  //printf("\r\nsizeof userConfig: %d | x%X bytes\r\n", sizeof(userConfig), sizeof(userConfig));
+  memcpy (&userConfig, &fwCfg_default, sizeof(fwCfg_t));
+  //printf("\r\n\nuserConfig: %ld %ld %ld %ld \r\n", userConfig.u32_crc, userConfig.u32_len, userConfig.u32_crcN, userConfig.u32_lenN);
+
+
   SystemCoreClockUpdate();
-  printf("\r\nMCU @ %ld MHz\r\n",SystemCoreClock/1000000);
+  printf("\r\nMCU @%ld MHz\r\n",SystemCoreClock/1000000);
   printf("HCLK=%.2f MHz\r\n", (float)HAL_RCC_GetHCLKFreq()/1000000);
   printf("APB1=%.2f MHz\r\n", (float)HAL_RCC_GetPCLK1Freq()/1000000);
   printf("APB2=%.2f MHz\r\n", (float)HAL_RCC_GetPCLK2Freq()/1000000);
@@ -313,7 +322,7 @@ void vTimerCallback5SecExpired( TimerHandle_t xTimer )
 		 //printf("timer callback %d \r\n", ulCount);
 
 		 if(ulCount >= 10){
-			 printf("OS TIMER STOPED \r\n");
+			 //printf("OS TIMER STOPED \r\n");
 			 xTimerStop( xTimer, 0 );
 			 ulCount = 0;
 			 xEventGroupSetBits(xEventGroup,BIT_3);
@@ -465,7 +474,6 @@ void Button_Thread(void const *argument)
 	{
 		/* Try to obtain the semaphore. */
 		if( xSemaphoreTake( osSemaphore,portMAX_DELAY ) == pdTRUE ){
-			//printf("btn int\r\n");
 			xEventGroupSetBits(xEventGroup,BIT_2);
 
 			/*******************************************************************
@@ -481,7 +489,7 @@ void Button_Thread(void const *argument)
 			vTaskGetRunTimeStats(stats);
 			printf("%s\r\n\n\n", stats);
 		}
-		vTaskDelay(100);
+		vTaskDelay(10);
 	}
   }
 }

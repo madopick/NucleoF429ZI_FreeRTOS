@@ -47,7 +47,8 @@ _Min_Stack_Size = 0x800; /* required amount of stack */
 MEMORY
 {
   CCMRAM    (xrw)    : ORIGIN = 0x10000000,   LENGTH = 64K
-  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 192K
+  RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 188K
+  RAM2 	(rw)  : ORIGIN = 0x20000000+188K,   LENGTH = 4K 
   FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 2048K
 }
 
@@ -195,6 +196,15 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
+  .ram2 (NOLOAD): 
+  {
+	. = ALIGN(4);
+	__userram_start__ = .;
+	KEEP(*(.user_ram*))
+	. = ALIGN(4);
+	__userram_end__ = .;
+  } > RAM2	
+	
   /* Remove information from the compiler libraries */
   /DISCARD/ :
   {
