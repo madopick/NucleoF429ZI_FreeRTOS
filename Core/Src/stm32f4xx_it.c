@@ -229,13 +229,22 @@ void USART3_IRQHandler(void)
 
 		//Calculate the length of the received data
 		uint8_t data_length  = 255 - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx);
-
+		uart3_buff_len 		 = data_length;
 
 #if 1
-//		printf("UART3 Receive (%d) \r\n",data_length);
-//		for(uint8_t i = 0; i < uart3_buff_len;i++)
-//			printf("[%d] : %c \r\n",i,uart3Rcv_buff[i]);
-//		printf("\r\n");
+
+#ifndef SHELL_CMD
+		printf("UART3 RX (%d) \r\n",data_length);
+		for(uint8_t i = 0; i < uart3_buff_len;i++){
+			if(uart3Rcv_buff[i] == 13){
+				printf("enter pressed\r\n\n");
+				break;
+			}else{
+				printf("[%d] : %c \r\n",i,uart3Rcv_buff[i]);
+			}
+		}
+		//printf("\r\n");
+#endif
 
 
 		/*******************************************************************************
@@ -248,11 +257,11 @@ void USART3_IRQHandler(void)
 		// Construct message and send
 		PrintMessage msg;
 		strncpy(msg.body, (char*)uart3Rcv_buff, data_length);
-		msg.count = 1;
+		msg.count = data_length;
 
 		if (xQueueSendToFrontFromISR(msg_queue, &msg, &xHigherPriorityTaskWoken) == pdPASS)
 		{
-			printf("INT Handler queue sent\r\n\n");
+			//printf("UART RX Handler\r\n\n");
 		}
 
 		/*****************************************************************************
@@ -262,18 +271,17 @@ void USART3_IRQHandler(void)
 		 * xHigherPriorityTaskWoken is still pdFALSE then calling
 		 * portEND_SWITCHING_ISR() will have no effect
 		 *****************************************************************************/
-
 		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
 
 
 #endif
 
-#ifdef SHELL_CMD
+#ifndef SHELL_CMD
 		for(int i = 0; i<data_length; i++){
 		  uint8_t single_char = uart3Rcv_buff[i];
-		  //tinysh_char_in((unsigned char)single_char);
+		  tinysh_char_in((unsigned char)single_char);
 		}
-#endif
+
 
 		//Zero Receiving Buffer
 		memset(uart3Rcv_buff, '\0', sizeof(uart3Rcv_buff));
@@ -283,6 +291,7 @@ void USART3_IRQHandler(void)
 
 		//Restart to start DMA transmission of 255 bytes of data at a time
 		HAL_UART_Receive_DMA(&huart3, (uint8_t*)uart3Rcv_buff, UART3_RX_BUFFER_SIZE);
+#endif
 	}
 }
 

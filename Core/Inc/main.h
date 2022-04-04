@@ -48,7 +48,7 @@ extern "C" {
 /* Exported macro ------------------------------------------------------------*/
 
 /* Exported functions prototypes ---------------------------------------------*/
-void Error_Handler(void);
+void Error_Handler(char * file, int line);
 
 /* Private defines -----------------------------------------------------------*/
 
@@ -93,6 +93,7 @@ void Error_Handler(void);
 
 
 #define UART3_RX_BUFFER_SIZE	255
+#define SHELL_CMD
 
 typedef struct PrintMessage {
   char body[20];

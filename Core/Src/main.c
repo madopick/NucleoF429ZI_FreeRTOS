@@ -20,7 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"					// temporary disable using CMSIS API
-
+#include "uart_drv.h"
 
 
 /* Private includes ----------------------------------------------------------*/
@@ -48,11 +48,11 @@ DMA_HandleTypeDef hdma_spi1_tx;
 DMA_HandleTypeDef hdma_usart3_tx;
 DMA_HandleTypeDef hdma_usart3_rx;
 
-UART_HandleTypeDef 	huart3;
+//UART_HandleTypeDef 	huart3;
 TIM_HandleTypeDef	htim3;
 
-uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];                		// UART3 RCV
-uint8_t uart3_buff_len;												// UART3 RCv Length
+//uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];                		// UART3 RCV
+//uint8_t uart3_buff_len;												// UART3 RCv Length
 
 ///FRERTOS
 /*************** Task Handlers (osThreadId) 	***************/
@@ -88,50 +88,15 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_CRC_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_USART3_UART_Init(void);
 static void MX_SPI1_Init(void);
 
 
 /*************** Task Function ***************/
 void Default_Thread(void *argument);
 void LED_Thread(void *argument);
-void UART_Thread(void *argument);
 void Button_Thread(void const *argument);
 void vTimerCallback5SecExpired( TimerHandle_t xTimer );
 
-/* Private user code ---------------------------------------------------------*/
-#ifdef SWO_DEBUG
-	//make sure SWV core clock MHz same as CPU clock.
-	//SWV viewer setting debug port 1 are checked, and started
-
-	int _write(int file, char *ptr, int len)
-	{
-		int i=0;
-		for(i=0; i<len; i++){
-			ITM_SendChar(*ptr++);
-		}
-		return len;
-	}
-
-#else
-#ifdef __GNUC__
-	/* With GCC, small printf (option LD Linker->Libraries->Small printf set to 'Yes') calls __io_putchar() */
-	#define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-	#else
-	#define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
-	#endif /* __GNUC__ */
-
-	/******************************************************************
-	  * @name   PUTCHAR_PROTOTYPE
-	  * @brief  Retargets the C library printf function to the USART.
-	  *****************************************************************/
-	PUTCHAR_PROTOTYPE
-	{
-		HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);				//Use USART3
-		return ch;
-	}
-
-#endif
 
 
 
@@ -157,12 +122,12 @@ void vConfigureTimerForRunTimeStats( void )
 	htim3.Init.AutoReloadPreload 	= TIM_AUTORELOAD_PRELOAD_DISABLE;
 	if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
 	{
-		Error_Handler();
+		Error_Handler(__FILE__, __LINE__);
 	}
 
 	if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
 	{
-		Error_Handler();
+		Error_Handler(__FILE__, __LINE__);
 	}
 }
 
@@ -187,7 +152,7 @@ void vApplicationMallocFailedHook( void )
 	printf("Malloc Failed!!!\r\n\n");
 	for( ;; );
 }
-/*-----------------------------------------------------------*/
+
 
 void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 {
@@ -201,8 +166,13 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
 	function is called if a stack overflow is detected. */
 	for( ;; );
 }
-/*-----------------------------------------------------------*/
 
+
+
+/************************************************************
+  * @brief  The application idle hook.
+  * @retval void
+  ***********************************************************/
 void vApplicationIdleHook( void )
 {
 	volatile size_t xFreeStackSpace;
@@ -223,6 +193,14 @@ void vApplicationIdleHook( void )
 
 
 
+/************************************************************
+  * @brief  The application tick hook.
+  * @retval void
+  ***********************************************************/
+void vApplicationTickHook( void )
+{
+
+}
 
 
 
@@ -247,7 +225,7 @@ int main(void)
   MX_DMA_Init();
   MX_CRC_Init();
   MX_I2C1_Init();
-  MX_USART3_UART_Init();
+  UARTPeriph.init(115200);
   MX_SPI1_Init();
 
   SystemCoreClockUpdate();
@@ -332,7 +310,7 @@ void vTimerCallback5SecExpired( TimerHandle_t xTimer )
 
 	if (xTimer == osTimers){
 		 ulCount++;
-		 printf("timer callback %d \r\n", ulCount);
+		 //printf("timer callback %d \r\n", ulCount);
 
 		 if(ulCount >= 10){
 			 printf("OS TIMER STOPED \r\n");
@@ -343,32 +321,6 @@ void vTimerCallback5SecExpired( TimerHandle_t xTimer )
 	}
  }
 
-
-
-/************************************************************
-  * @brief  LED thread
-  * @param  semaphore
-  * @retval None
-  ************************************************************/
-void UART_Thread(void *argument)
-{
-	struct PrintMessage rcv_msg;
-	uint32_t TickDelay = pdMS_TO_TICKS(3000);
-
-	for(;;)
-	{
-		// check message in the queue
-		if (xQueueReceive(msg_queue, (void *)&rcv_msg, portMAX_DELAY) != pdTRUE) {
-			printf("UART QUEUE Error\r\n\n");
-		}else{
-			printf("UART Thread RUN from %s\r\n\n",rcv_msg.body);
-		}
-
-		vTaskDelay(TickDelay);
-	}
-
-
-}
 
 
 /************************************************************
@@ -417,7 +369,7 @@ void LED_Thread(void *argument)
 		msg.count = 1;
 
 		if (xQueueSend(msg_queue, &msg, portMAX_DELAY) == pdPASS){
-			printf("\r\n\nsent msg queue\r\n");
+			//printf("\r\n\nsent msg queue\r\n");
 		}
 
 		uint32_t TickDelay = pdMS_TO_TICKS(2000);
@@ -583,13 +535,13 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLQ 		= 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 
   /** Activate the Over-Drive mode */
   if (HAL_PWREx_EnableOverDrive() != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 
   /** Initializes the CPU, AHB and APB buses clocksm */
@@ -602,7 +554,7 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 }
 
@@ -617,7 +569,7 @@ static void MX_CRC_Init(void)
   hcrc.Instance = CRC;
   if (HAL_CRC_Init(&hcrc) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 }
 
@@ -640,19 +592,19 @@ static void MX_I2C1_Init(void)
   hi2c1.Init.NoStretchMode 		= I2C_NOSTRETCH_DISABLE;
   if (HAL_I2C_Init(&hi2c1) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 
   /** Configure Analogue filter*/
   if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 
   /** Configure Digital filter*/
   if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
 }
 
@@ -678,33 +630,8 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CRCPolynomial 			= 10;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
-}
-
-
-/************************************************************
-  * @brief USART3 Initialization Function
-  * @param None
-  * @retval None
-  ************************************************************/
-static void MX_USART3_UART_Init(void)
-{
-  huart3.Instance 				= USART3;
-  huart3.Init.BaudRate 			= 115200;
-  huart3.Init.WordLength 		= UART_WORDLENGTH_8B;
-  huart3.Init.StopBits 			= UART_STOPBITS_1;
-  huart3.Init.Parity 			= UART_PARITY_NONE;
-  huart3.Init.Mode 				= UART_MODE_TX_RX;
-  huart3.Init.HwFlowCtl 		= UART_HWCONTROL_NONE;
-  huart3.Init.OverSampling 		= UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
-  HAL_UART_Receive_DMA(&huart3, (uint8_t*)uart3Rcv_buff, UART3_RX_BUFFER_SIZE);
 }
 
 
@@ -825,12 +752,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   * @brief  This function is executed in case of error occurrence.
   * @retval None
   ************************************************************/
-void Error_Handler(void)
+void Error_Handler(char * file, int line)
 {
-  /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)
   {
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  HAL_Delay(100);
   }
 }
 
