@@ -21,6 +21,34 @@ __IO uint32_t data32 = 0 , MemoryProgramStatus = 0;
 /*Variable used for Erase procedure*/
 static FLASH_EraseInitTypeDef EraseInitStruct;
 
+extern EventGroupHandle_t xEventGroupFLASH;
+
+void FLASH_Thread(void *argument)
+{
+  EventBits_t uxBits;
+
+  for(;;)
+  {
+	  	uxBits = xEventGroupWaitBits(
+	  			xEventGroupFLASH,   							/* The event group being tested. */
+				FLASH_BIT_0 | FLASH_BIT_1 | FLASH_BIT_2, 		/* The bits within the event group to wait for. */
+	  			pdFALSE,        								/* BIT_0 & BIT_1 not cleared before returning. */
+	  			pdFALSE,       									/* Don't wait for both bits, either bit will do. */
+				portMAX_DELAY );								/* Wait a forever. */
+
+	  	if(( uxBits & FLASH_BIT_0 )!= 0){
+
+
+	  	}
+	  	else if(( uxBits & FLASH_BIT_1 ) != 0) {
+
+	  	}else{
+	  		vTaskDelay(100);
+	  	}
+  }
+}
+
+
 
 /**************************************************
  *  @name 	GetSectorSize
@@ -337,14 +365,14 @@ HAL_StatusTypeDef flashErase(void)
 
 	/// Unlock the Flash to enable the flash control register access
 	while(HAL_FLASH_Unlock() != HAL_OK){
-		HAL_Delay(20);
-		if(retry > 5){
+		vTaskDelay(20);
+		if(retry > 10){
 			break;
 		}
 		retry++;
 	}
 
-	if(retry > 5)
+	if(retry > 10)
 		return retval;
 
 	/*********************************************************************************************

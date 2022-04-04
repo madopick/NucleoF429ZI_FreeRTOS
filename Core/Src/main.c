@@ -21,7 +21,7 @@
 #include "main.h"
 #include "cmsis_os.h"					// temporary disable using CMSIS API
 #include "uart_drv.h"
-
+#include "flashReadWrite.h"
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -60,6 +60,7 @@ xTaskHandle defaultThreadHandle;
 xTaskHandle ButtonThreadHandle;
 xTaskHandle UARTThreadHandle;
 xTaskHandle LEDThreadHandle;
+xTaskHandle FLASHThreadHandle;
 
 /*************** Queue Handlers (QueueHandle_t) ***************/
 xQueueHandle delay_queue 	= NULL;
@@ -72,7 +73,8 @@ SemaphoreHandle_t osSemaphore;
 SemaphoreHandle_t mutexSemaphore;
 
 /*************** EventGroup Handlers ***************/
-EventGroupHandle_t xEventGroup = 0;
+EventGroupHandle_t xEventGroupLED 	= 0;
+EventGroupHandle_t xEventGroupFLASH = 0;
 
 /*************** Timer Handlers 	 ***************/
 TimerHandle_t osTimers;
@@ -257,11 +259,13 @@ int main(void)
   }
 
   /* RTOS_EVENT_GROUP */
-  xEventGroup = xEventGroupCreate();
-  if( xEventGroup == NULL )
+  xEventGroupLED 	= xEventGroupCreate();
+  xEventGroupFLASH 	= xEventGroupCreate();
+  if((xEventGroupLED == NULL ) || (xEventGroupFLASH == NULL))
   {
 	  printf("Event Group Fail!!!\r\n");
   }
+
 
   /* RTOS_SEMAPHORES */
   osSemaphore = xSemaphoreCreateBinary();
@@ -287,6 +291,7 @@ int main(void)
   xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityNormal, &defaultThreadHandle);
   xTaskCreate(LED_Thread, "LED_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &LEDThreadHandle);
   xTaskCreate(UART_Thread, "UART_TASK", 3*configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &UARTThreadHandle);
+  xTaskCreate(FLASH_Thread, "FLASH_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &FLASHThreadHandle);
 
   /* Button Thread definition */
   osThreadDef(BUTTON_TASK, Button_Thread, osPriorityHigh, 0, 3*configMINIMAL_STACK_SIZE);
@@ -325,7 +330,7 @@ void vTimerCallback5SecExpired( TimerHandle_t xTimer )
 			 //printf("OS TIMER STOPED \r\n");
 			 xTimerStop( xTimer, 0 );
 			 ulCount = 0;
-			 xEventGroupSetBits(xEventGroup,BIT_3);
+			 xEventGroupSetBits(xEventGroupLED,BIT_3);
 		 }
 	}
  }
@@ -352,7 +357,7 @@ void LED_Thread(void *argument)
 
     /* Wait a maximum of 100ms for either bit 0,4 or bit 5 in event group.  Clear the bits before exiting. */
 	uxBits = xEventGroupWaitBits(
-			xEventGroup,   		/* The event group being tested. */
+			xEventGroupLED,   		/* The event group being tested. */
 			BIT_0 | BIT_1, 		/* The bits within the event group to wait for. */
 			pdFALSE,        	/* BIT_0 & BIT_1 not cleared before returning. */
 			pdFALSE,       		/* Don't wait for both bits, either bit will do. */
@@ -370,7 +375,7 @@ void LED_Thread(void *argument)
 		}
 
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-		uxBits = xEventGroupClearBits( xEventGroup,  BIT_0 | BIT_1 );
+		uxBits = xEventGroupClearBits( xEventGroupLED,  BIT_0 | BIT_1 );
 
 		// Construct message and send
 		PrintMessage msg;
@@ -388,7 +393,7 @@ void LED_Thread(void *argument)
 	else if ((( uxBits & BIT_0 ) != 0) && (( uxBits & (BIT_2|BIT_3)) == 0))
 	{
 		/* BIT_0 was set. */
-		uxBits = xEventGroupSetBits(xEventGroup, BIT_1);
+		uxBits = xEventGroupSetBits(xEventGroupLED, BIT_1);
 		//printf("BIT0 set \r\n\n\n");
 
 		count = 0;
@@ -402,13 +407,13 @@ void LED_Thread(void *argument)
 	else if((( uxBits & BIT_1 ) != 0 ) && (( uxBits & (BIT_2|BIT_3)) == 0))
 	{
 		/* BIT_1 was set. */
-		uxBits = xEventGroupSetBits(xEventGroup, BIT_0);
+		uxBits = xEventGroupSetBits(xEventGroupLED, BIT_0);
 		//printf("BIT4 set \r\n\n\n");
 	}
 	else if(( uxBits & BIT_2 ) != 0 )
 	{
 		/* BIT_2 was set. */
-		uxBits = xEventGroupClearBits(xEventGroup,  BIT_2);
+		uxBits = xEventGroupClearBits(xEventGroupLED,  BIT_2);
 
 		if(xSemaphoreTake(mutexSemaphore, (TickType_t)10) == pdTRUE ){
 			printf("Mutex hold by LED\r\n");
@@ -431,7 +436,7 @@ void LED_Thread(void *argument)
 	else if( ( uxBits & BIT_3 ) != 0 )
 	{
 		/* BIT_3 was set. */
-		uxBits = xEventGroupClearBits(xEventGroup,  BIT_3);
+		uxBits = xEventGroupClearBits(xEventGroupLED,  BIT_3);
 		xTimerStart(osTimers, 0);
 
 		count = 0;
@@ -447,8 +452,8 @@ void LED_Thread(void *argument)
 	else
 	{
 		/* Timeout */
-		//printf("timeout xEventGroup\r\n\n\n");
-		uxBits = xEventGroupSetBits(xEventGroup,BIT_0);
+		//printf("timeout xEventGroupLED\r\n\n\n");
+		uxBits = xEventGroupSetBits(xEventGroupLED,BIT_0);
 	}
 
   }
@@ -474,7 +479,7 @@ void Button_Thread(void const *argument)
 	{
 		/* Try to obtain the semaphore. */
 		if( xSemaphoreTake( osSemaphore,portMAX_DELAY ) == pdTRUE ){
-			xEventGroupSetBits(xEventGroup,BIT_2);
+			xEventGroupSetBits(xEventGroupLED,BIT_2);
 
 			/*******************************************************************
 			 * Calling the function will have used some stack space.

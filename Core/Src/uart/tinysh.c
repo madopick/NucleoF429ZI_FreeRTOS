@@ -149,7 +149,7 @@ static void ram2ReadCMD(int argc, char **argv)
 	data32 = *(__IO uint32_t *)RAM_USER_START_ADDR+8;
 	printf("x%lx: %ld\r\n", RAM_USER_START_ADDR+8, data32);
 
-	printf("userConfig: %ld %ld %ld %ld \r\n", userConfig.u32_crc, userConfig.u32_crcN, userConfig.u32_len, userConfig.u32_lenN);
+	printf("userConfig: %ld %ld %ld %ld \r\n", userConfig.u32_crc, userConfig.u32_len, userConfig.u32_crcN, userConfig.u32_lenN);
 }
 
 
@@ -224,10 +224,11 @@ static void configWriteCMD(int argc, char **argv)
 
 /**************************************
  * CONFIG VARIABLE READ COMMAND	  	  *
+ * CFGREAD							  *
  **************************************/
 static void configReadCMD(int argc, char **argv)
 {
-#if 0
+#if 1
 	printf("CONFIG:\r\nCRC: %ld LEN: %ld CRCN: %ld LENN: %ld CFGID: %d, CFGVer: %d\r\n",
 			userConfig.u32_crc, userConfig.u32_len, userConfig.u32_crcN, userConfig.u32_lenN, userConfig.u16_cfgProjectId, userConfig.u16_cfgVer);
 
@@ -272,21 +273,23 @@ static void configReadCMD(int argc, char **argv)
 
 /**************************************************************
  * READ FLASH in particular sector  						  *
+ * PRINTFLASH												  *
  * usecase: Read stored config value in FLASH_USER_START_ADDR *
  **************************************************************/
 static void flashAreaReadCMD(int argc, char **argv)
 {
-	//flashAreaRead(FLASH_USER_START_ADDR, 1000);
+	flashAreaRead(FLASH_USER_START_ADDR, 1000);
 }
 
 
 /********************************************************
  * Print RAM value 										*
+ * PRINTRAM												*
  * usecase: read RAM on addr 0x2001F000 (fw config)		*
  ********************************************************/
 static void printRAMCMD(int argc, char **argv)
 {
-	//printRAMvalue (0x2001F000, 1000);
+	printRAMvalue (RAM_USER_START_ADDR, 1000);
 
 	puts("PRINTRAM FINISH\r\n");
 }
@@ -294,11 +297,12 @@ static void printRAMCMD(int argc, char **argv)
 
 /********************************************************
  * Copy Config data from Flash Area to RAM area			*
+ * COPYTORAM											*
  ********************************************************/
 static void copyToRamCMD(int argc, char **argv)
 {
-#if 0
-	if(copyFlashToRAM(FLASH_USER_START_ADDR, 0x2001F000, sizeof(fwCfg_t)) == HAL_OK){
+#if 1
+	if(copyFlashToRAM(FLASH_USER_START_ADDR, RAM_USER_START_ADDR, sizeof(fwCfg_t)) == HAL_OK){
 		puts("Copy Flash to RAM OK !!!\r\n");
 	}else{
 		puts("Copy Flash to RAM FAIL !!!\r\n");
@@ -309,11 +313,12 @@ static void copyToRamCMD(int argc, char **argv)
 
 /********************************************************
  * 	Copy config data from RAM area to Flash Area    	*
+ * 	COPYTOFLASH											*
  ********************************************************/
 static void copyToFlashCMD(int argc, char **argv)
 {
-#if 0
-	if(copyRamToFlash(0x2001F000, FLASH_USER_START_ADDR, sizeof(fwCfg_t)) == HAL_OK){
+#if 1
+	if(copyRamToFlash(RAM_USER_START_ADDR, FLASH_USER_START_ADDR, sizeof(fwCfg_t)) == HAL_OK){
 	//if(copyRamToFlash(0x2001F000, FLASH_USER_START_ADDR, 500) == HAL_OK){
 		puts("Copy RAM to FLASH OK !!!\r\n");
 	}else{
@@ -325,6 +330,7 @@ static void copyToFlashCMD(int argc, char **argv)
 
 /********************************************************
  * 	Change Spesific Config Value   						*
+ * 	VARCHANGE											*
  ********************************************************/
 static void changeCfgCMD(int argc, char **argv)
 {
@@ -341,7 +347,7 @@ static void changeCfgCMD(int argc, char **argv)
 		uint32_t value = (uint32_t)tinysh_dec((char*)&argv[2][0]);
 		//printf("Value (%d): %ld \r\n", len, value);
 
-		uint32_t RAMaddr = 0x2001F000 + offset;
+		uint32_t RAMaddr = RAM_USER_START_ADDR + offset;
 		volatile int *point = (int *)RAMaddr;
 		*point = value;
 
@@ -356,6 +362,7 @@ static void changeCfgCMD(int argc, char **argv)
 
 /********************************************************
  * 	Read Spesific Config Value   						*
+ * 	VARREAD												*
  ********************************************************/
 static void readCfgCMD(int argc, char **argv)
 {
@@ -365,7 +372,7 @@ static void readCfgCMD(int argc, char **argv)
 	}else{
 
 		uint32_t offset = (uint32_t)tinysh_dec((char*)&argv[1][0]);
-		offset += 0x2001F000;
+		offset += RAM_USER_START_ADDR;
 		uint32_t dataReadBack  = *(__IO uint32_t *)offset;
 //		printf("Read 4 bytes of addr (%ld): %ld \r\n", 0x2001F000 + offset, dataReadBack);
 //		printf("Data[0]: %ld, [1]: %ld, [2]: %ld, [3]: %ld  \r\n",

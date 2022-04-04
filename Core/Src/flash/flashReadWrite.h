@@ -25,11 +25,20 @@ extern "C" {
 #define ADDR_FLASH_SECTOR_7     ((uint32_t)0x08060000) /* Base address of Sector 7, 128 Kbytes */
 
 
-#define FLASH_USER_START_ADDR   ADDR_FLASH_SECTOR_4   											/* Start @ of user Flash area */
-#define FLASH_USER_END_ADDR     ADDR_FLASH_SECTOR_4  +  GetSectorSize(ADDR_FLASH_SECTOR_4) -1 	/* End @ of user Flash area : sector start address + sector size -1 */
+#define FLASH_USER_START_ADDR   ADDR_FLASH_SECTOR_7   											/* Start @ of user Flash area */
+#define FLASH_USER_END_ADDR     ADDR_FLASH_SECTOR_7  +  GetSectorSize(ADDR_FLASH_SECTOR_7) -1 	/* End @ of user Flash area : sector start address + sector size -1 */
 
 
 #define RAM_USER_START_ADDR		((uint32_t)0x2002f000)
+
+#define FLASH_BIT_0	( 1 << 0 )
+#define FLASH_BIT_1	( 1 << 1 )
+#define FLASH_BIT_2	( 1 << 2 )
+#define FLASH_BIT_3	( 1 << 3 )
+
+
+
+void FLASH_Thread(void *argument);
 
 uint32_t flashRead(uint32_t addr);
 HAL_StatusTypeDef flashWrite(uint32_t addr, uint32_t data);
@@ -40,6 +49,9 @@ HAL_StatusTypeDef copyFlashToRAM (uint32_t FLASHaddr, uint32_t RAMaddr, uint16_t
 HAL_StatusTypeDef copyRamToFlash (uint32_t RAMaddr, uint32_t FLASHaddr, uint16_t len);
 HAL_StatusTypeDef copyFlashToRAM (uint32_t FLASHaddr, uint32_t RAMaddr, uint16_t len);
 HAL_StatusTypeDef copyRamToFlash (uint32_t RAMaddr, uint32_t FLASHaddr, uint16_t len);
+
+
+
 
 #ifdef __cplusplus
 }
