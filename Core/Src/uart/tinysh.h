@@ -12,6 +12,7 @@
 extern "C" {
 #endif
 
+#include "main.h"
 
 typedef void (*tinysh_fnt_t)(int argc, char **argv);
 
@@ -55,6 +56,7 @@ unsigned long tinysh_atoxi(char *s);
 unsigned long tinysh_dec(char *s);
 unsigned long tinysh_hex(char *s);
 unsigned long tinysh_longhex(char *s);
+void tinysh_afe(char *s, uint8_t txNum);
 
 #ifdef __cplusplus
 

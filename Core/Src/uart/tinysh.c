@@ -56,6 +56,8 @@ static void 		*tinysh_arg=0;
 extern UART_HandleTypeDef huart3;
 extern struct fwCfg_t userConfig;
 extern struct fwCfg_t *fwCfgp;
+extern int16_t afe_raw_data[TX_LEN][RX_LEN];
+
 
 
 /**************************************
@@ -381,6 +383,54 @@ static void readCfgCMD(int argc, char **argv)
 	}
 }
 
+
+/********************************************************
+ * 	AFE RAW Data Input			   						*
+ * 	AFE													*
+ ********************************************************/
+static void afeCfgCMD(int argc, char **argv)
+{
+	if (argc != 3){
+		puts("AFE invalid arguments!\r\n");
+		return;
+	}else{
+		uint32_t txNum = (uint32_t)tinysh_dec((char*)&argv[1][0]);
+		if(txNum >= 40){
+			puts("TX cannot bigger than 39\r\n");
+			return;
+		}
+
+		//printf("TxNum: %ld\r\n",txNum);
+		printf("RX: %s\r\n",&argv[2][0]);
+		tinysh_afe((char*)&argv[2][0], txNum);
+
+	}
+}
+
+
+/********************************************************
+ * 	RAW Data Show				   						*
+ * 	RAW													*
+ ********************************************************/
+static void rawCfgCMD(int argc, char **argv)
+{
+	if (argc != 1){
+		puts("RAW invalid arguments!\r\n");
+		return;
+	}else{
+		for (uint8_t tx = 0; tx < TX_LEN; tx++){
+			printf("\r\nTX[%.2d]:\t",tx);
+			for (uint8_t rx = 0; rx < RX_LEN; rx++){
+				printf("%d\t",afe_raw_data[tx][rx]);
+			}
+		}
+		printf("\r\n");
+	}
+}
+
+
+
+
 static tinysh_cmd_t fwritecmd={0,"FWRITE","		[NONE]","[NONE]",fWriteCMD,0,0,0};
 static tinysh_cmd_t freadcmd={0,"FREAD","		[NONE]","[NONE]",fReadCMD,0,0,0};
 static tinysh_cmd_t ferasecmd={0,"FERASE","		[NONE]","[NONE]",fEraseCMD,0,0,0};
@@ -394,6 +444,8 @@ static tinysh_cmd_t copyToRAMcmd={0,"COPYTORAM","		[NONE]","[NONE]",copyToRamCMD
 static tinysh_cmd_t copyToFlashcmd={0,"COPYTOFLASH","		[NONE]","[NONE]",copyToFlashCMD,0,0,0};
 static tinysh_cmd_t changeCfgcmd={0,"VARCHANGE","		[OFFEST	VALUE]","[2 Arguments]",changeCfgCMD,0,0,0};
 static tinysh_cmd_t readCfgcmd={0,"VARREAD","		[OFFSET]","[1 Arguments]",readCfgCMD,0,0,0};
+static tinysh_cmd_t afeCfgcmd={0,"AFE","		[1TX 20RX]","[2 Arguments]",afeCfgCMD,0,0,0};
+static tinysh_cmd_t rawCfgcmd={0,"RAW","		[NONE]","[NONE]",rawCfgCMD,0,0,0};
 
 void tinysh_init(void)
 {
@@ -416,6 +468,8 @@ void tinysh_init(void)
 	tinysh_add_command(&copyToFlashcmd);
 	tinysh_add_command(&changeCfgcmd);
 	tinysh_add_command(&readCfgcmd);
+	tinysh_add_command(&afeCfgcmd);
+	tinysh_add_command(&rawCfgcmd);
 }
 
 
@@ -457,6 +511,7 @@ static void help_fnt(int argc, char **argv)
   puts("CFGREAD		NONE			Display Config Value\r\n");
   puts("VARCHANGE	OFFSET & VALUE		Change Config Value\r\n");
   puts("VARREAD		OFFSET			Read Config Value\r\n");
+  puts("AFE		TX RX			input TX and RX Data(RX separated by comma)\r\n");
   puts("\r\n");
 
 }
@@ -1078,6 +1133,47 @@ unsigned long tinysh_atoxi(char *s)
   }
 
   return res;
+}
+
+
+/*********************************************************************
+ * @name	: tinysh_afe
+ * @brief	:
+ *********************************************************************/
+void tinysh_afe(char *s, uint8_t txNum)
+{
+  int32_t res=0;
+  uint8_t sign	= 0;
+
+
+  for(uint8_t rx = 0; rx < RX_LEN; rx++){
+	while(*s){
+		//printf("- %c\r\n", *s);
+		if(*s == '-'){
+			sign  = 1;
+			res   = 0;
+		}else if(*s>='0' && *s<='9'){
+			res*=10;
+			res+=*s-'0';
+		}else if(*s ==','){
+			break;
+		}else{
+			break;
+		}
+		s++;
+	}
+	if(sign){
+		res *= -1;
+	}
+
+	printf("[%d] res: %ld\r\n", rx, res);
+	afe_raw_data[txNum][rx] = res;
+
+	res	 = 0;
+	sign = 0;
+	s++;
+  }
+
 }
 
 

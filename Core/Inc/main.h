@@ -98,6 +98,9 @@ void Error_Handler(char * file, int line);
 #define UART3_RX_BUFFER_SIZE	255
 #define SHELL_CMD
 
+#define RX_LEN 					20
+#define TX_LEN 					40
+
 typedef struct PrintMessage {
   char body[20];
   int count;

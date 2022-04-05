@@ -51,8 +51,7 @@ DMA_HandleTypeDef hdma_usart3_rx;
 //UART_HandleTypeDef 	huart3;
 TIM_HandleTypeDef	htim3;
 
-//uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];                		// UART3 RCV
-//uint8_t uart3_buff_len;												// UART3 RCv Length
+int16_t afe_raw_data[TX_LEN][RX_LEN] = {0};
 
 ///FRERTOS
 /*************** Task Handlers (osThreadId) 	***************/
@@ -377,6 +376,7 @@ void LED_Thread(void *argument)
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 		uxBits = xEventGroupClearBits( xEventGroupLED,  BIT_0 | BIT_1 );
 
+#if 0
 		// Construct message and send
 		PrintMessage msg;
 		strcpy(msg.body, "LED Thread");
@@ -385,6 +385,7 @@ void LED_Thread(void *argument)
 		if (xQueueSend(msg_queue, &msg, portMAX_DELAY) == pdPASS){
 			//printf("\r\n\nsent msg queue\r\n");
 		}
+#endif
 
 		uint32_t TickDelay = pdMS_TO_TICKS(2000);
 		vTaskDelay(TickDelay);

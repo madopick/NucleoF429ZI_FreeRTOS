@@ -145,6 +145,15 @@ void UART_Thread(void *argument)
 			  tinysh_char_in((unsigned char)single_char);
 			}
 
+			//printf("UARTRX: %s\r\n\n",uart3Rcv_buff);
+
+			//Zero Receiving Buffer
+			memset(uart3Rcv_buff, '\0', sizeof(uart3Rcv_buff));
+			uart3_buff_len = 0;
+
+			//Restart to start DMA transmission of 255 bytes of data at a time
+			HAL_UART_Receive_DMA(&huart3, (uint8_t*)uart3Rcv_buff, UART3_RX_BUFFER_SIZE);
+
 #else
 			printf("UART Thread RUN from %s\r\n\n",rcv_msg.body);
 #endif
@@ -222,14 +231,6 @@ void USART3_IRQHandler(void)
 		 * portEND_SWITCHING_ISR() will have no effect
 		 *****************************************************************************/
 		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
-
-
-		//Zero Receiving Buffer
-		memset(uart3Rcv_buff, '\0', sizeof(uart3Rcv_buff));
-		uart3_buff_len = 0;
-
-		//Restart to start DMA transmission of 255 bytes of data at a time
-		HAL_UART_Receive_DMA(&huart3, (uint8_t*)uart3Rcv_buff, UART3_RX_BUFFER_SIZE);
 
 #endif
 
