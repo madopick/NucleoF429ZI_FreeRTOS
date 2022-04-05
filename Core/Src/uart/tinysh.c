@@ -15,7 +15,7 @@
 #define BUFFER_SIZE 	256
 #endif
 #ifndef HISTORY_DEPTH
-#define HISTORY_DEPTH 	6		// 16
+#define HISTORY_DEPTH 	10		// 16
 #endif
 #ifndef MAX_ARGS
 #define MAX_ARGS 		10		// 16
@@ -317,14 +317,11 @@ static void copyToRamCMD(int argc, char **argv)
  ********************************************************/
 static void copyToFlashCMD(int argc, char **argv)
 {
-#if 1
 	if(copyRamToFlash(RAM_USER_START_ADDR, FLASH_USER_START_ADDR, sizeof(fwCfg_t)) == HAL_OK){
-	//if(copyRamToFlash(0x2001F000, FLASH_USER_START_ADDR, 500) == HAL_OK){
 		puts("Copy RAM to FLASH OK !!!\r\n");
 	}else{
 		puts("Copy RAM to FLASH FAIL !!!\r\n");
 	}
-#endif
 }
 
 
@@ -405,7 +402,7 @@ void tinysh_init(void)
 	puts("=========================| CONSOLE CMD |=============================\r\n");
 	puts("type '?' or HELP for Manual\r\n");
 
-	tinysh_set_prompt("\r\n\nVT$");
+	tinysh_set_prompt("\r\n\nVT> ");
 	tinysh_add_command(&fwritecmd);
 	tinysh_add_command(&freadcmd);
 	tinysh_add_command(&ferasecmd);
@@ -889,14 +886,14 @@ static void _tinysh_char_in(uchar c)
 	//cur_cmd_ctx=0;
 
 	  putchar('\r');
-	  puts("VT$");
+	  puts("VT> ");
 
 	  while(cur_index > 0){
 		  puts(" ");
 		  cur_index--;
 	  }
 	  putchar('\r');
-	  puts("VT$");
+	  puts("VT> ");
 	  cur_index=0;
 	  line[cur_index]=0;
   }
@@ -922,7 +919,7 @@ static void _tinysh_char_in(uchar c)
           while(cur_index-->strlen(line))
             puts("\b \b");
           putchar('\r');
-          puts("VT$");
+          puts("VT> ");
           puts((char*)line);
           cur_index=strlen(line);
           cur_buf_index=prevline;
@@ -942,7 +939,7 @@ static void _tinysh_char_in(uchar c)
 			puts("\b \b");
 		  putchar('\r');
 		  //start_of_line();
-		  puts("VT$");
+		  puts("VT> ");
 		  puts((char*)line);
 		  cur_index=strlen(line);
 		  cur_buf_index=nextline;

@@ -429,8 +429,6 @@ void LED_Thread(void *argument)
 			xSemaphoreGive(mutexSemaphore);
 		}
 
-
-
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 	}
 	else if( ( uxBits & BIT_3 ) != 0 )

@@ -44,10 +44,8 @@ extern DMA_HandleTypeDef hdma_spi1_tx;
 extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim1;
 
-extern UART_HandleTypeDef huart3;
-extern DMA_HandleTypeDef hdma_usart3_rx;
-extern uint8_t uart3Rcv_buff[UART3_RX_BUFFER_SIZE];
-extern uint8_t uart3_buff_len;
+
+
 
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */
@@ -199,101 +197,9 @@ void DMA2_Stream3_IRQHandler(void)
 
 
 
-//======================================= UART 3 OPERATION ==================================================//
-
-/***************************************************************
-  * @brief This function handles DMA1 stream1 global interrupt.
-  * @param  None
-  * @retval None
-  **************************************************************/
-void DMA1_Stream1_IRQHandler(void)
-{
-	HAL_DMA_IRQHandler(&hdma_usart3_rx);
-}
-
-/********************************************************
-  * @brief This function handles USART3 interrupt.
-  ******************************************************/
-void USART3_IRQHandler(void)
-{
-	extern xQueueHandle msg_queue;
-
-	HAL_UART_IRQHandler(&huart3);
-
-	if(RESET != __HAL_UART_GET_FLAG(&huart3, UART_FLAG_IDLE))   //Judging whether it is idle interruption
-	{
-		__HAL_UART_CLEAR_IDLEFLAG(&huart3);                     //Clear idle interrupt sign (otherwise it will continue to enter interrupt)
-
-		//Stop this DMA transmission
-		HAL_UART_DMAStop(&huart3);
-
-		//Calculate the length of the received data
-		uint8_t data_length  = 255 - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx);
-		uart3_buff_len 		 = data_length;
-
-#if 1
-
-#ifndef SHELL_CMD
-		printf("UART3 RX (%d) \r\n",data_length);
-		for(uint8_t i = 0; i < uart3_buff_len;i++){
-			if(uart3Rcv_buff[i] == 13){
-				printf("enter pressed\r\n\n");
-				break;
-			}else{
-				printf("[%d] : %c \r\n",i,uart3Rcv_buff[i]);
-			}
-		}
-		//printf("\r\n");
-#endif
 
 
-		/*******************************************************************************
-		* The xHigherPriorityTaskWoken parameter must be initialized to pdFALSE as
-		* it will get set to pdTRUE inside the interrupt safe API function if a
-		* context switch is required.
-		*******************************************************************************/
-		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-		// Construct message and send
-		PrintMessage msg;
-		strncpy(msg.body, (char*)uart3Rcv_buff, data_length);
-		msg.count = data_length;
-
-		if (xQueueSendToFrontFromISR(msg_queue, &msg, &xHigherPriorityTaskWoken) == pdPASS)
-		{
-			//printf("UART RX Handler\r\n\n");
-		}
-
-		/*****************************************************************************
-		 * Pass the xHigherPriorityTaskWoken value into portEND_SWITCHING_ISR(). If
-		 * xHigherPriorityTaskWoken was set to pdTRUE inside xSemaphoreGiveFromISR()
-		 * then calling portEND_SWITCHING_ISR() will request a context switch. If
-		 * xHigherPriorityTaskWoken is still pdFALSE then calling
-		 * portEND_SWITCHING_ISR() will have no effect
-		 *****************************************************************************/
-		portEND_SWITCHING_ISR(xHigherPriorityTaskWoken);
-
-
-#endif
-
-#ifndef SHELL_CMD
-		for(int i = 0; i<data_length; i++){
-		  uint8_t single_char = uart3Rcv_buff[i];
-		  tinysh_char_in((unsigned char)single_char);
-		}
-
-
-		//Zero Receiving Buffer
-		memset(uart3Rcv_buff, '\0', sizeof(uart3Rcv_buff));
-		uart3_buff_len = data_length;
-		data_length = 0;
-
-
-		//Restart to start DMA transmission of 255 bytes of data at a time
-		HAL_UART_Receive_DMA(&huart3, (uint8_t*)uart3Rcv_buff, UART3_RX_BUFFER_SIZE);
-#endif
-	}
-}
 
 
 
