@@ -1213,7 +1213,7 @@ void tinysh_afe(char *s, uint8_t txNum)
 		res *= -1;
 	}
 
-	printf("[%d] res: %ld\r\n", rx, res);
+	printf("[%.2d] rx: %ld\r\n", rx, res);
 	afe_raw_data[txNum][rx] = (float32_t)res;
 
 	res	 = 0;

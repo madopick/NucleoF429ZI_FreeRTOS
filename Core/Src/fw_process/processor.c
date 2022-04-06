@@ -373,6 +373,8 @@ void PROC_CurveFinal(struct Processor *p)
     /* Find coefficient */
     IPOL_GetCoeffAlt2(len, kx, ky, coeff);
 
+    printf("C: %.3f ,B: %.3f, A: %.3f\r\n",coeff[0],coeff[1],coeff[2]);
+
     /* Interpolate */
     for (uint8_t rx = 0; rx < RX_SZ; rx++)
       cf[tx][rx] = IPOL_Estimate(rx, coeff);
@@ -422,12 +424,12 @@ void PROC_Profiler(struct Processor *p)
   f32_r2 = arm_rsquare_f32(pRef, pTest, TR_SZ);
 
   /* Print to stdout */
-  printf("Frame Duration: %.2f ms\r\n", f32_duration);
-  printf("Frame SNR: %.6f dB\r\n", f32_snr);
-  printf("Frame MAE: %.6f \r\n", f32_mae);
-  printf("Frame MSE: %.6f \r\n", f32_mse);
-  printf("Frame RMSE: %.6f \r\n", f32_rmse);
-  printf("Frame R-Square: %.6f \r\n", f32_r2);
+  printf("\r\n\nFrame Duration:\t %.2f ms\r\n", f32_duration);
+  printf("Frame SNR:\t %.6f dB\r\n", f32_snr);
+  printf("Frame MAE:\t %.6f \r\n", f32_mae);
+  printf("Frame MSE:\t %.6f \r\n", f32_mse);
+  printf("Frame RMSE:\t %.6f \r\n", f32_rmse);
+  printf("Frame R-Square:\t %.6f \r\n\n\n", f32_r2);
   print_array_f32(pTest, TX_SZ, RX_SZ);
 
   //__BKPT(0);
