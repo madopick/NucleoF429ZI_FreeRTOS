@@ -211,6 +211,8 @@ void PROC_Integrated(struct Processor *p)
 #endif
 
   p->counter[2] = DWT_GetCounter();
+
+  print_array_f32(p->integrated, TX_SZ, RX_SZ);
 }
 
 /**
@@ -248,6 +250,8 @@ void PROC_Reconstructed(struct Processor *p)
   arm_sub_f32(p->integrated, p->average[0], p->reconstructed, TR_SZ);
 
   p->counter[4] = DWT_GetCounter();
+
+  //print_array_f32(p->reconstructed, TX_SZ, RX_SZ);
 }
 
 /**
@@ -395,11 +399,11 @@ void PROC_Profiler(struct Processor *p)
 //
 //  /* Count section duration */
   f32_duration = get_duration_ms(p);
-//
-//  /* Calculate metrics */
+
+  /* Calculate metrics */
 //  pRef = (float32_t*) FILTERED_REF;
 //  pTest = p->filtered;
-//
+
 //  f32_snr = arm_snr_f32(pRef, pTest, TR_SZ);
 //  f32_mae = arm_mae_f32(pRef, pTest, TR_SZ);
 //  f32_mse = arm_mse_f32(pRef, pTest, TR_SZ);
@@ -452,7 +456,7 @@ static void print_array_f32(float *pData, uint8_t u8_numRows, uint8_t u8_numCols
   for (uint16_t r = 0; r < u8_numRows; r++)
   {
     for (uint16_t c = 0; c < u8_numCols; c++)
-      printf("%.12f, ", data[r][c]);
+      printf("%.2f, ", data[r][c]);
     printf("\r\n");
   }
   printf("\r\n");

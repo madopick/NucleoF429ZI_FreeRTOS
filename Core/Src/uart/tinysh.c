@@ -56,7 +56,7 @@ static void 		*tinysh_arg=0;
 extern UART_HandleTypeDef huart3;
 extern struct fwCfg_t userConfig;
 extern struct fwCfg_t *fwCfgp;
-extern int16_t afe_raw_data[TX_LEN][RX_LEN];
+extern float32_t afe_raw_data[TX_SZ][RX_SZ];
 
 extern SemaphoreHandle_t afeSemaphore;
 
@@ -419,9 +419,9 @@ static void rawCfgCMD(int argc, char **argv)
 		puts("RAW invalid arguments!\r\n");
 		return;
 	}else{
-		for (uint8_t tx = 0; tx < TX_LEN; tx++){
+		for (uint8_t tx = 0; tx < TX_SZ; tx++){
 			printf("\r\nTX[%.2d]:\t",tx);
-			for (uint8_t rx = 0; rx < RX_LEN; rx++){
+			for (uint8_t rx = 0; rx < RX_SZ; rx++){
 				printf("%d\t",afe_raw_data[tx][rx]);
 			}
 		}
@@ -440,8 +440,8 @@ static void clearCfgCMD(int argc, char **argv)
 		puts("RAW invalid arguments!\r\n");
 		return;
 	}else{
-		for (uint8_t tx = 0; tx < TX_LEN; tx++){
-			for (uint8_t rx = 0; rx < RX_LEN; rx++){
+		for (uint8_t tx = 0; tx < TX_SZ; tx++){
+			for (uint8_t rx = 0; rx < RX_SZ; rx++){
 				afe_raw_data[tx][rx] = 0;
 			}
 		}
@@ -1191,7 +1191,7 @@ void tinysh_afe(char *s, uint8_t txNum)
   uint8_t sign	= 0;
 
 
-  for(uint8_t rx = 0; rx < RX_LEN; rx++){
+  for(uint8_t rx = 0; rx < RX_SZ; rx++){
 	while(*s){
 		//printf("- %c\r\n", *s);
 		if(*s == '-'){

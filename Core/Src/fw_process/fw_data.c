@@ -70,6 +70,7 @@ const float32_t FILTERED_REF[TX_SZ][RX_SZ] = {
 
 
 extern SemaphoreHandle_t afeSemaphore;
+extern float32_t afe_raw_data[TX_SZ][RX_SZ];
 
 struct Processor hproc;
 
@@ -93,7 +94,11 @@ void AFE_Thread(void *argument)
 				if (PROC_Init(&hproc) == HAL_OK){
 					PROC_SetThreshold(&hproc, 200, 50, 50);
 					DWT_Start();
-					PROC_SetData(&hproc, (float32_t*) RAWDATA, (float32_t*) DIFF_BASELINE);
+
+					//PROC_SetData(&hproc, (float32_t*) RAWDATA, (float32_t*) DIFF_BASELINE);
+					//memcpy(&afe_raw_data[0][0], &RAWDATA[0][0], TX_SZ*RX_SZ*sizeof(afe_raw_data[0][0]));
+					PROC_SetData(&hproc, (float32_t*) afe_raw_data, (float32_t*) DIFF_BASELINE);
+
 					PROC_DifferentialStrength(&hproc);
 					PROC_Integrated(&hproc);
 					PROC_Average(&hproc);

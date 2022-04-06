@@ -41,6 +41,8 @@ extern "C" {
 
 #include "flashReadWrite.h"
 #include "fw_cfg.h"
+#include "fw_data.h"
+#include "uart_drv.h"
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -98,8 +100,6 @@ void Error_Handler(char * file, int line);
 #define UART3_RX_BUFFER_SIZE	255
 #define SHELL_CMD
 
-#define RX_LEN 					20
-#define TX_LEN 					40
 
 typedef struct PrintMessage {
   char body[20];

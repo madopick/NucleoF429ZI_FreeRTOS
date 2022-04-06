@@ -20,9 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"					// temporary disable using CMSIS API
-#include "uart_drv.h"
-#include "flashReadWrite.h"
-#include "fw_data.h"
+
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -51,7 +49,7 @@ DMA_HandleTypeDef hdma_usart3_rx;
 
 TIM_HandleTypeDef	htim3;
 
-int16_t afe_raw_data[TX_LEN][RX_LEN] = {0};
+float32_t afe_raw_data[TX_SZ][RX_SZ] = {0};
 
 ///FRERTOS
 /*************** Task Handlers (osThreadId) 	***************/
@@ -291,11 +289,11 @@ int main(void)
   }
 
   /* RTOS TASKS */
-  xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityNormal, &defaultThreadHandle);
+  xTaskCreate(Default_Thread, "DEFAULT_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &defaultThreadHandle);
   xTaskCreate(LED_Thread, "LED_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &LEDThreadHandle);
   xTaskCreate(UART_Thread, "UART_TASK", 3*configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &UARTThreadHandle);
   xTaskCreate(FLASH_Thread, "FLASH_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &FLASHThreadHandle);
-  xTaskCreate(AFE_Thread, "AFE_TASK", 8*configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &AFEThreadHandle);
+  xTaskCreate(AFE_Thread, "AFE_TASK", 5*configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &AFEThreadHandle);
 
   /* Button Thread definition */
   osThreadDef(BUTTON_TASK, Button_Thread, osPriorityHigh, 0, 3*configMINIMAL_STACK_SIZE);
