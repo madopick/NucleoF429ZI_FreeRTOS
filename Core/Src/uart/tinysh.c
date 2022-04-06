@@ -396,8 +396,8 @@ static void afeCfgCMD(int argc, char **argv)
 		return;
 	}else{
 		uint32_t txNum = (uint32_t)tinysh_dec((char*)&argv[1][0]);
-		if(txNum >= 40){
-			puts("TX cannot bigger than 39\r\n");
+		if(txNum >= TX_SZ){
+			printf("TX cannot bigger than %d\r\n",TX_SZ);
 			return;
 		}
 
@@ -420,9 +420,9 @@ static void rawCfgCMD(int argc, char **argv)
 		return;
 	}else{
 		for (uint8_t tx = 0; tx < TX_SZ; tx++){
-			printf("\r\nTX[%.2d]:\t",tx);
+			printf("\r\n\n[%.2d]:\t",tx);
 			for (uint8_t rx = 0; rx < RX_SZ; rx++){
-				printf("%d\t",afe_raw_data[tx][rx]);
+				printf("%.2f\t",afe_raw_data[tx][rx]);
 			}
 		}
 		printf("\r\n");
@@ -1212,7 +1212,7 @@ void tinysh_afe(char *s, uint8_t txNum)
 	}
 
 	printf("[%d] res: %ld\r\n", rx, res);
-	afe_raw_data[txNum][rx] = res;
+	afe_raw_data[txNum][rx] = (float32_t)res;
 
 	res	 = 0;
 	sign = 0;

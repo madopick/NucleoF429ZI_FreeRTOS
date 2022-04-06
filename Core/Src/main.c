@@ -60,6 +60,9 @@ xTaskHandle LEDThreadHandle;
 xTaskHandle FLASHThreadHandle;
 xTaskHandle AFEThreadHandle;
 
+UBaseType_t uxHighWaterMarkAFE;
+
+
 /*************** Queue Handlers (QueueHandle_t) ***************/
 xQueueHandle delay_queue 	= NULL;
 xQueueHandle msg_queue 		= NULL;
@@ -470,10 +473,10 @@ void LED_Thread(void *argument)
   ************************************************************/
 void Button_Thread(void const *argument)
 {
-  UBaseType_t uxHighWaterMark;
+  UBaseType_t uxHighWaterMarkBTN;
 
   /* Inspect our own high water mark on entering the task. */
-  uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+  uxHighWaterMarkBTN = uxTaskGetStackHighWaterMark( NULL );
 
   for(;;)
   {
@@ -488,13 +491,15 @@ void Button_Thread(void const *argument)
 			 * uxTaskGetStackHighWaterMark() to return a
 			 * value = 0 (overflow)
 			 *******************************************************************/
-			uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
+			uxHighWaterMarkBTN = uxTaskGetStackHighWaterMark( NULL );
 
-			printf("Task\t\tABS Time\tTime(%%) | %ld\r\n", uxHighWaterMark);
+			printf("Task\t\tABS Time\tTime(%%)\r\n");
 			printf("=============================================\r\n");
 			char stats[256];
 			vTaskGetRunTimeStats(stats);
 			printf("%s\r\n\n\n", stats);
+			printf("AFE Task: %ld\r\n", uxHighWaterMarkAFE);
+			printf("BUTTON Task: %ld\r\n", uxHighWaterMarkBTN);
 		}
 		vTaskDelay(10);
 	}

@@ -68,7 +68,7 @@ const float32_t FILTERED_REF[TX_SZ][RX_SZ] = {
   { 1.895255605, -2.664796739, 6.438981589, 0.625761362, 4.725355009, -0.939655053, -5.879827432, -10.25080236, -8.474793893, 0.285036843, 1.709141105, 3.626373225, -4.52380027, 6.188383557, 9.661677242, 2.087136504, 3.754414703, -6.671343706, 1.745487178, -4.799793724, 12.41300539, -8.406891676, 10.64874961, -8.088984273, 5.975320915, -9.909712039, -10.14075896, 2.127546459, -1.525457025, 8.368990854 },
 };
 
-
+extern UBaseType_t uxHighWaterMarkAFE;
 extern SemaphoreHandle_t afeSemaphore;
 extern float32_t afe_raw_data[TX_SZ][RX_SZ];
 
@@ -76,20 +76,14 @@ struct Processor hproc;
 
 void AFE_Thread(void *argument)
 {
-	UBaseType_t uxHighWaterMark;
-	uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
-
-
-
-
+	uxHighWaterMarkAFE = uxTaskGetStackHighWaterMark( NULL );
 	for(;;)
 	{
 		if (afeSemaphore != NULL)
 		{
 			if(xSemaphoreTake(afeSemaphore,portMAX_DELAY) == pdTRUE ){
 
-				uxHighWaterMark = uxTaskGetStackHighWaterMark( NULL );
-				printf("AFE Task: %ld\r\n", uxHighWaterMark);
+				uxHighWaterMarkAFE = uxTaskGetStackHighWaterMark( NULL );
 
 				if (PROC_Init(&hproc) == HAL_OK){
 					PROC_SetThreshold(&hproc, 200, 50, 50);
