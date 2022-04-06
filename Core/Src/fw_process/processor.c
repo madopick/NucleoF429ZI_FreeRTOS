@@ -19,11 +19,12 @@ static void print_array_f32(float *pData, uint8_t u8_numRows, uint8_t u8_numCols
 static float get_duration_ms(struct Processor *p);
 
 /* Public function definitions */
-/**
- * @brief Initialize Processor instance
- * @param p Pointer to Processor instance
- * @return HAL Status
- */
+
+/**************************************************
+ * @brief 	Initialize Processor instance
+ * @param 	p Pointer to Processor instance
+ * @return 	HAL Status
+ *************************************************/
 HAL_StatusTypeDef PROC_Init(struct Processor *p)
 {
   float32_t *ptr;
@@ -97,10 +98,11 @@ HAL_StatusTypeDef PROC_Init(struct Processor *p)
   return (HAL_ERROR);
 }
 
-/**
- * @brief De-Initilaize Processor instance
- * @param p Pointer to Processor instance
- */
+
+/**************************************************
+ * @brief 	De-Initilaize Processor instance
+ * @param 	p Pointer to Processor instance
+ *************************************************/
 void PROC_DeInit(struct Processor *p)
 {
 #ifdef USE_TRANSPOSE_ALGO
@@ -122,13 +124,14 @@ void PROC_DeInit(struct Processor *p)
   free(p->diff_baseline);
 }
 
-/**
+
+/*******************************************************************
  * @brief Set Threshold for Reconstructed, CurveFit 1 and 2 step
  * @param p Pointer to Processor instance
  * @param reconstructed Threshold for reconstructed
  * @param curvefit1 Threshold for curve fit 1
  * @param curvefit2 Threshold for curve fit 2
- */
+ *******************************************************************/
 void PROC_SetThreshold(struct Processor *p,
                        float32_t reconstructed,
                        float32_t curvefit1,
@@ -139,12 +142,13 @@ void PROC_SetThreshold(struct Processor *p,
   p->thres[THRES_CURVEFIT2] = curvefit2;
 }
 
-/**
+
+/*****************************************************************
  * @brief Set Raw Data to be processed
  * @param p Pointer to Processor instance
  * @param rawData Pointer to raw data buffer
  * @param baseline Pointer to differential baseline buffer
- */
+ *****************************************************************/
 void PROC_SetData(struct Processor *p, const float32_t *rawData, const float32_t *baseline)
 {
   p->rawdata = (float32_t*) rawData;
@@ -153,10 +157,10 @@ void PROC_SetData(struct Processor *p, const float32_t *rawData, const float32_t
   p->counter[0] = DWT_GetCounter();
 }
 
-/**
+/***************************************************************
  * @brief Process Differential Strength section
  * @param p Pointer to Processor instance
- */
+ ***************************************************************/
 void PROC_DifferentialStrength(struct Processor *p)
 {
   arm_sub_f32(p->diff_baseline, p->rawdata, p->diff_strength, TR_SZ);
@@ -164,10 +168,11 @@ void PROC_DifferentialStrength(struct Processor *p)
   p->counter[1] = DWT_GetCounter();
 }
 
-/**
+
+/**************************************************
  * @brief Process Integrated section
  * @param p Pointer to Processor instance
- */
+ *************************************************/
 void PROC_Integrated(struct Processor *p)
 {
 #ifndef USE_TRANSPOSE_ALGO
@@ -212,13 +217,14 @@ void PROC_Integrated(struct Processor *p)
 
   p->counter[2] = DWT_GetCounter();
 
-  print_array_f32(p->integrated, TX_SZ, RX_SZ);
+  //print_array_f32(p->integrated, TX_SZ, RX_SZ);
 }
 
-/**
+
+/**************************************************
  * @brief Process Average section
  * @param p Pointer to Processor instance
- */
+ *************************************************/
 void PROC_Average(struct Processor *p)
 {
   float32_t (*itg)[RX_SZ] = (float32_t (*)[RX_SZ]) p->integrated;
@@ -241,10 +247,11 @@ void PROC_Average(struct Processor *p)
   p->counter[3] = DWT_GetCounter();
 }
 
-/**
+
+/**************************************************
  * @brief Process Reconstructed section
  * @param p Pointer to Processor instance
- */
+ *************************************************/
 void PROC_Reconstructed(struct Processor *p)
 {
   arm_sub_f32(p->integrated, p->average[0], p->reconstructed, TR_SZ);
@@ -254,10 +261,11 @@ void PROC_Reconstructed(struct Processor *p)
   //print_array_f32(p->reconstructed, TX_SZ, RX_SZ);
 }
 
-/**
+
+/**************************************************
  * @brief Process Curve Compare section
  * @param p Pointer to Processor instance
- */
+ *************************************************/
 void PROC_CurveCompare(struct Processor *p)
 {
   float32_t (*cf1)[RX_SZ] = (float32_t (*)[RX_SZ]) p->curvefit[1];
@@ -341,10 +349,11 @@ void PROC_CurveCompare(struct Processor *p)
   p->counter[5] = DWT_GetCounter();
 }
 
-/**
+
+/**************************************************
  * @brief Process Curve Final section
  * @param p Pointer to Processor instance
- */
+ *************************************************/
 void PROC_CurveFinal(struct Processor *p)
 {
   float32_t (*cf)[RX_SZ] = (float32_t (*)[RX_SZ]) p->curvefit[0];
@@ -372,10 +381,11 @@ void PROC_CurveFinal(struct Processor *p)
   p->counter[6] = DWT_GetCounter();
 }
 
-/**
+
+/**************************************************
  * @brief Process Filtered section
  * @param p Pointer to Processor instance
- */
+ *************************************************/
 void PROC_Filtered(struct Processor *p)
 {
   arm_sub_f32(p->reconstructed, p->curvefit[0], p->filtered, TR_SZ);
@@ -383,10 +393,11 @@ void PROC_Filtered(struct Processor *p)
   p->counter[7] = DWT_GetCounter();
 }
 
-/**
+
+/**************************************************
  * @brief Profiling the algorithm result
  * @param p Pointer to Processor instance
- */
+ *************************************************/
 void PROC_Profiler(struct Processor *p)
 {
   volatile float f32_duration;
@@ -419,18 +430,19 @@ void PROC_Profiler(struct Processor *p)
   printf("Frame R-Square: %.6f \r\n", f32_r2);
   print_array_f32(pTest, TX_SZ, RX_SZ);
 
-  __BKPT(0);
+  //__BKPT(0);
 }
 
+
 /* Private function definitions */
-/**
- * @brief Get known values from curve compare result
- * @param p Pointer to Processor instance
- * @param tx Current tx index
- * @param[out] kx Vector to known x values
- * @param[out] ky Vector to known y values
- * @return Length of known values
- */
+/***************************************************************
+ * @brief 		Get known values from curve compare result
+ * @param 		p Pointer to Processor instance
+ * @param 		tx Current tx index
+ * @param[out] 	kx Vector to known x values
+ * @param[out] 	ky Vector to known y values
+ * @return 		Length of known values
+ ***************************************************************/
 static uint8_t compact_array(struct Processor *p, uint8_t tx, float32_t *kx, float32_t *ky)
 {
   float32_t (*rec)[RX_SZ] = (float32_t (*)[RX_SZ]) p->reconstructed;
@@ -449,6 +461,7 @@ static uint8_t compact_array(struct Processor *p, uint8_t tx, float32_t *kx, flo
   return (len);
 }
 
+
 static void print_array_f32(float *pData, uint8_t u8_numRows, uint8_t u8_numCols)
 {
   float (*data)[u8_numCols] = (float (*)[u8_numCols]) pData;
@@ -461,6 +474,7 @@ static void print_array_f32(float *pData, uint8_t u8_numRows, uint8_t u8_numCols
   }
   printf("\r\n");
 }
+
 
 static float get_duration_ms(struct Processor *p)
 {
