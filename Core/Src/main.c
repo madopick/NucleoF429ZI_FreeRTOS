@@ -22,6 +22,7 @@
 #include "cmsis_os.h"					// temporary disable using CMSIS API
 #include "uart_drv.h"
 #include "flashReadWrite.h"
+#include "fw_data.h"
 
 /* Private includes ----------------------------------------------------------*/
 
@@ -48,7 +49,6 @@ DMA_HandleTypeDef hdma_spi1_tx;
 DMA_HandleTypeDef hdma_usart3_tx;
 DMA_HandleTypeDef hdma_usart3_rx;
 
-//UART_HandleTypeDef 	huart3;
 TIM_HandleTypeDef	htim3;
 
 int16_t afe_raw_data[TX_LEN][RX_LEN] = {0};
@@ -60,6 +60,7 @@ xTaskHandle ButtonThreadHandle;
 xTaskHandle UARTThreadHandle;
 xTaskHandle LEDThreadHandle;
 xTaskHandle FLASHThreadHandle;
+xTaskHandle AFEThreadHandle;
 
 /*************** Queue Handlers (QueueHandle_t) ***************/
 xQueueHandle delay_queue 	= NULL;
@@ -67,6 +68,7 @@ xQueueHandle msg_queue 		= NULL;
 
 /*************** Semaphore Handlers (osSemaphoreId) ***************/
 SemaphoreHandle_t osSemaphore;
+SemaphoreHandle_t afeSemaphore;
 
 /*************** Mutex Handlers ***************/
 SemaphoreHandle_t mutexSemaphore;
@@ -268,7 +270,9 @@ int main(void)
 
   /* RTOS_SEMAPHORES */
   osSemaphore = xSemaphoreCreateBinary();
-  if( osSemaphore == NULL )
+  afeSemaphore = xSemaphoreCreateBinary();
+
+  if((osSemaphore == NULL)||(afeSemaphore == NULL))
   {
 	  printf("Semaphore creation Fail!!!\r\n");
   }
@@ -290,7 +294,8 @@ int main(void)
   xTaskCreate(Default_Thread, "DEFAULT_TASK", 128, NULL, osPriorityNormal, &defaultThreadHandle);
   xTaskCreate(LED_Thread, "LED_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &LEDThreadHandle);
   xTaskCreate(UART_Thread, "UART_TASK", 3*configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &UARTThreadHandle);
-  xTaskCreate(FLASH_Thread, "FLASH_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &FLASHThreadHandle);
+  xTaskCreate(FLASH_Thread, "FLASH_TASK", configMINIMAL_STACK_SIZE, NULL, osPriorityNormal, &FLASHThreadHandle);
+  xTaskCreate(AFE_Thread, "AFE_TASK", 8*configMINIMAL_STACK_SIZE, NULL, osPriorityAboveNormal, &AFEThreadHandle);
 
   /* Button Thread definition */
   osThreadDef(BUTTON_TASK, Button_Thread, osPriorityHigh, 0, 3*configMINIMAL_STACK_SIZE);

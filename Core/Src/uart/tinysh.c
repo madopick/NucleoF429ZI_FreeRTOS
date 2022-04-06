@@ -58,6 +58,7 @@ extern struct fwCfg_t userConfig;
 extern struct fwCfg_t *fwCfgp;
 extern int16_t afe_raw_data[TX_LEN][RX_LEN];
 
+extern SemaphoreHandle_t afeSemaphore;
 
 
 /**************************************
@@ -429,6 +430,46 @@ static void rawCfgCMD(int argc, char **argv)
 }
 
 
+/********************************************************
+ * 	RAW Data Clear				   						*
+ * 	CLEAR													*
+ ********************************************************/
+static void clearCfgCMD(int argc, char **argv)
+{
+	if (argc != 1){
+		puts("RAW invalid arguments!\r\n");
+		return;
+	}else{
+		for (uint8_t tx = 0; tx < TX_LEN; tx++){
+			for (uint8_t rx = 0; rx < RX_LEN; rx++){
+				afe_raw_data[tx][rx] = 0;
+			}
+		}
+		printf("AFE RAW data cleared\r\n");
+	}
+}
+
+
+
+/********************************************************
+ * 	Start Raw Data Calculation process				   						*
+ * 	CALCULATE													*
+ ********************************************************/
+static void calculateCfgCMD(int argc, char **argv)
+{
+	if (argc != 1){
+		puts("RAW invalid arguments!\r\n");
+		return;
+	}else{
+		if(xSemaphoreGive(afeSemaphore) != pdTRUE )
+		{
+			puts("calculate semaphore fail!");
+		}
+
+	}
+}
+
+
 
 
 static tinysh_cmd_t fwritecmd={0,"FWRITE","		[NONE]","[NONE]",fWriteCMD,0,0,0};
@@ -446,6 +487,8 @@ static tinysh_cmd_t changeCfgcmd={0,"VARCHANGE","		[OFFEST	VALUE]","[2 Arguments
 static tinysh_cmd_t readCfgcmd={0,"VARREAD","		[OFFSET]","[1 Arguments]",readCfgCMD,0,0,0};
 static tinysh_cmd_t afeCfgcmd={0,"AFE","		[1TX 20RX]","[2 Arguments]",afeCfgCMD,0,0,0};
 static tinysh_cmd_t rawCfgcmd={0,"RAW","		[NONE]","[NONE]",rawCfgCMD,0,0,0};
+static tinysh_cmd_t clearCfgcmd={0,"CLEAR","		[NONE]","[NONE]",clearCfgCMD,0,0,0};
+static tinysh_cmd_t calculateCfgcmd={0,"CALCULATE","		[NONE]","[NONE]",calculateCfgCMD,0,0,0};
 
 void tinysh_init(void)
 {
@@ -470,6 +513,8 @@ void tinysh_init(void)
 	tinysh_add_command(&readCfgcmd);
 	tinysh_add_command(&afeCfgcmd);
 	tinysh_add_command(&rawCfgcmd);
+	tinysh_add_command(&clearCfgcmd);
+	tinysh_add_command(&calculateCfgcmd);
 }
 
 
