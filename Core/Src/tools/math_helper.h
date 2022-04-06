@@ -34,7 +34,7 @@
 
 #include "arm_math.h"
 
-float arm_snr_f32(float *pRef, float *pTest,  uint32_t buffSize);
+
 double arm_snr_f64(double *pRef, double *pTest,  uint32_t buffSize);
 void arm_float_to_q12_20(float *pIn, q31_t * pOut, uint32_t numSamples);
 void arm_provide_guard_bits_q15(q15_t *input_buf, uint32_t blockSize, uint32_t guard_bits);

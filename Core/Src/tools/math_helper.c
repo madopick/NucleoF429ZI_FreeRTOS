@@ -50,65 +50,8 @@
 #include "math_helper.h"
 #include "stm32f429xx.h"
 
-/**
- * @brief  Caluclation of SNR
- * @param[in]  pRef 	Pointer to the reference buffer
- * @param[in]  pTest	Pointer to the test buffer
- * @param[in]  buffSize	total number of samples
- * @return     SNR
- * The function Caluclates signal to noise ratio for the reference output
- * and test output
- */
 
-float arm_snr_f32(float *pRef, float *pTest, uint32_t buffSize)
-{
-  float EnergySignal = 0.0, EnergyError = 0.0;
-  uint32_t i;
-  float SNR;
-  int temp;
-  int *test;
-
-  for (i = 0; i < buffSize; i++)
-    {
- 	  /* Checking for a NAN value in pRef array */
-	  test =   (int *)(&pRef[i]);
-      temp =  *test;
-
-	  if (temp == 0x7FC00000)
-	  {
-	  		return(0);
-	  }
-
-	  /* Checking for a NAN value in pTest array */
-	  test =   (int *)(&pTest[i]);
-      temp =  *test;
-
-	  if (temp == 0x7FC00000)
-	  {
-	  		return(0);
-	  }
-      EnergySignal += pRef[i] * pRef[i];
-      EnergyError += (pRef[i] - pTest[i]) * (pRef[i] - pTest[i]);
-    }
-
-	/* Checking for a NAN value in EnergyError */
-	test =   (int *)(&EnergyError);
-    temp =  *test;
-
-    if (temp == 0x7FC00000)
-    {
-  		return(0);
-    }
-
-
-  SNR = 10 * log10 (EnergySignal / EnergyError);
-
-  return (SNR);
-
-}
-
-
-/**
+/************************************************************************
  * @brief  Provide guard bits for Input buffer
  * @param[in,out]  input_buf   Pointer to input buffer
  * @param[in]       blockSize  block Size
@@ -116,7 +59,7 @@ float arm_snr_f32(float *pRef, float *pTest, uint32_t buffSize)
  * @return none
  * The function Provides the guard bits for the buffer
  * to avoid overflow
- */
+ ************************************************************************/
 
 void arm_provide_guard_bits_q15 (q15_t * input_buf, uint32_t blockSize,
                             uint32_t guard_bits)
@@ -129,14 +72,14 @@ void arm_provide_guard_bits_q15 (q15_t * input_buf, uint32_t blockSize,
     }
 }
 
-/**
+/*************************************************************************
  * @brief  Converts float to fixed in q12.20 format
  * @param[in]  pIn         pointer to input buffer
  * @param[out] pOut        pointer to outputbuffer
  * @param[in]  numSamples  number of samples in the input buffer
  * @return none
  * The function converts floating point values to fixed point(q12.20) values
- */
+ ************************************************************************/
 
 void arm_float_to_q12_20(float *pIn, q31_t * pOut, uint32_t numSamples)
 {
@@ -156,13 +99,13 @@ void arm_float_to_q12_20(float *pIn, q31_t * pOut, uint32_t numSamples)
     }
 }
 
-/**
+/*************************************************************************
  * @brief  Compare MATLAB Reference Output and ARM Test output
  * @param[in]  pIn         Pointer to Ref buffer
  * @param[in]  pOut        Pointer to Test buffer
  * @param[in]  numSamples  number of samples in the buffer
  * @return maximum difference
- */
+ ************************************************************************/
 
 uint32_t arm_compare_fixed_q15(q15_t *pIn, q15_t *pOut, uint32_t numSamples)
 {
@@ -184,13 +127,13 @@ uint32_t arm_compare_fixed_q15(q15_t *pIn, q15_t *pOut, uint32_t numSamples)
   return(maxDiff);
 }
 
-/**
+/*************************************************************************
  * @brief  Compare MATLAB Reference Output and ARM Test output
  * @param[in]  pIn         Pointer to Ref buffer
  * @param[in]  pOut        Pointer to Test buffer
  * @param[in]  numSamples number of samples in the buffer
  * @return maximum difference
- */
+ ************************************************************************/
 
 uint32_t arm_compare_fixed_q31(q31_t *pIn, q31_t * pOut, uint32_t numSamples)
 {
@@ -212,7 +155,8 @@ uint32_t arm_compare_fixed_q31(q31_t *pIn, q31_t * pOut, uint32_t numSamples)
   return(maxDiff);
 }
 
-/**
+
+/*************************************************************************
  * @brief  Provide guard bits for Input buffer
  * @param[in,out]  input_buf   Pointer to input buffer
  * @param[in]       blockSize  block Size
@@ -220,8 +164,7 @@ uint32_t arm_compare_fixed_q31(q31_t *pIn, q31_t * pOut, uint32_t numSamples)
  * @return none
  * The function Provides the guard bits for the buffer
  * to avoid overflow
- */
-
+ ************************************************************************/
 void arm_provide_guard_bits_q31 (q31_t * input_buf,
 								 uint32_t blockSize,
                                  uint32_t guard_bits)
@@ -234,7 +177,8 @@ void arm_provide_guard_bits_q31 (q31_t * input_buf,
     }
 }
 
-/**
+
+/*************************************************************************
  * @brief  Provide guard bits for Input buffer
  * @param[in,out]  input_buf   Pointer to input buffer
  * @param[in]       blockSize  block Size
@@ -242,8 +186,7 @@ void arm_provide_guard_bits_q31 (q31_t * input_buf,
  * @return none
  * The function Provides the guard bits for the buffer
  * to avoid overflow
- */
-
+ ************************************************************************/
 void arm_provide_guard_bits_q7 (q7_t * input_buf,
 								uint32_t blockSize,
                                 uint32_t guard_bits)
@@ -258,14 +201,13 @@ void arm_provide_guard_bits_q7 (q7_t * input_buf,
 
 
 
-/**
+/*************************************************************************
  * @brief  Caluclates number of guard bits
  * @param[in]  num_adds 	number of additions
  * @return guard bits
  * The function Caluclates the number of guard bits
  * depending on the numtaps
- */
-
+ ************************************************************************/
 uint32_t arm_calc_guard_bits (uint32_t num_adds)
 {
   uint32_t i = 1, j = 0;
@@ -284,14 +226,13 @@ uint32_t arm_calc_guard_bits (uint32_t num_adds)
   return (j);
 }
 
-/**
+/*************************************************************************
  * @brief  Apply guard bits to buffer
  * @param[in,out]  pIn         pointer to input buffer
  * @param[in]      numSamples  number of samples in the input buffer
  * @param[in]      guard_bits  guard bits
  * @return none
- */
-
+ ************************************************************************/
 void arm_apply_guard_bits (float32_t *pIn,
 						   uint32_t numSamples,
 						   uint32_t guard_bits)
@@ -304,11 +245,12 @@ void arm_apply_guard_bits (float32_t *pIn,
     }
 }
 
-/**
+
+/*************************************************************************
  * @brief  Calculates pow(2, numShifts)
  * @param[in]  numShifts 	number of shifts
  * @return pow(2, numShifts)
- */
+ ************************************************************************/
 uint32_t arm_calc_2pow(uint32_t numShifts)
 {
 
@@ -323,16 +265,14 @@ uint32_t arm_calc_2pow(uint32_t numShifts)
 }
 
 
-
-/**
+/*************************************************************************
  * @brief  Converts float to fixed q14
  * @param[in]  pIn         pointer to input buffer
  * @param[out] pOut        pointer to output buffer
  * @param[in]  numSamples  number of samples in the buffer
  * @return none
  * The function converts floating point values to fixed point values
- */
-
+ ************************************************************************/
 void arm_float_to_q14 (float *pIn, q15_t *pOut, uint32_t numSamples)
 {
   uint32_t i;
@@ -354,15 +294,14 @@ void arm_float_to_q14 (float *pIn, q15_t *pOut, uint32_t numSamples)
 }
 
 
-/**
+/*************************************************************************
  * @brief  Converts float to fixed q30 format
  * @param[in]  pIn         pointer to input buffer
  * @param[out] pOut        pointer to output buffer
  * @param[in]  numSamples  number of samples in the buffer
  * @return none
  * The function converts floating point values to fixed point values
- */
-
+ ************************************************************************/
 void arm_float_to_q30 (float *pIn, q31_t * pOut, uint32_t numSamples)
 {
   uint32_t i;
@@ -381,14 +320,15 @@ void arm_float_to_q30 (float *pIn, q31_t * pOut, uint32_t numSamples)
     }
 }
 
-/**
+
+/*************************************************************************
  * @brief  Converts float to fixed q30 format
  * @param[in]  pIn         pointer to input buffer
  * @param[out] pOut        pointer to output buffer
  * @param[in]  numSamples  number of samples in the buffer
  * @return none
  * The function converts floating point values to fixed point values
- */
+ ************************************************************************/
 
 void arm_float_to_q29 (float *pIn, q31_t *pOut, uint32_t numSamples)
 {
@@ -409,15 +349,14 @@ void arm_float_to_q29 (float *pIn, q31_t *pOut, uint32_t numSamples)
 }
 
 
-/**
+/*************************************************************************
  * @brief  Converts float to fixed q28 format
  * @param[in]  pIn         pointer to input buffer
  * @param[out] pOut        pointer to output buffer
  * @param[in]  numSamples  number of samples in the buffer
  * @return none
  * The function converts floating point values to fixed point values
- */
-
+ ************************************************************************/
 void arm_float_to_q28 (float *pIn, q31_t *pOut, uint32_t numSamples)
 {
   uint32_t i;
@@ -436,14 +375,14 @@ void arm_float_to_q28 (float *pIn, q31_t *pOut, uint32_t numSamples)
     }
 }
 
-/**
+
+/*************************************************************************
  * @brief  Clip the float values to +/- 1
  * @param[in,out]  pIn           input buffer
  * @param[in]      numSamples    number of samples in the buffer
  * @return none
  * The function converts floating point values to fixed point values
- */
-
+ ************************************************************************/
 void arm_clip_f32 (float *pIn, uint32_t numSamples)
 {
   uint32_t i;

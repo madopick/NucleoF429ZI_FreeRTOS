@@ -549,7 +549,7 @@ static void help_fnt(int argc, char **argv)
   puts("TAB					Auto complete.\r\n\n");
   puts("COMMANDS:       ARGUMENTS:	        NOTE:\r\n");
   puts("========================================================================\r\n");
-  puts("PRINTRAM	NONE			Display 60 bytes value of RAM @x2001F000\r\n");
+  puts("PRINTRAM	NONE			Display 60 bytes value of USER RAM \r\n");
   puts("PRINTFLASH	NONE			Display 60 bytes value of Flash Data Area\r\n");
   puts("COPYTORAM	NONE			Copy Value Flash Data Area to RAM @x2001F000\r\n");
   puts("COPYTOFLASH	NONE			Copy Value RAM @x2001F000 to Flash Data Area\r\n");
@@ -557,6 +557,8 @@ static void help_fnt(int argc, char **argv)
   puts("VARCHANGE	OFFSET & VALUE		Change Config Value\r\n");
   puts("VARREAD		OFFSET			Read Config Value\r\n");
   puts("AFE		TX RX			input TX and RX Data(RX separated by comma)\r\n");
+  puts("CLEAR		NONE			Clear All AFE TX and RX Data\r\n");
+  puts("CALCULATE	NONE			Start AFE Processing\r\n");
   puts("\r\n");
 
 }

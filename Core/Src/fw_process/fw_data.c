@@ -90,7 +90,7 @@ void AFE_Thread(void *argument)
 					DWT_Start();
 
 					//PROC_SetData(&hproc, (float32_t*) RAWDATA, (float32_t*) DIFF_BASELINE);
-					//memcpy(&afe_raw_data[0][0], &RAWDATA[0][0], TX_SZ*RX_SZ*sizeof(afe_raw_data[0][0]));
+					memcpy(&afe_raw_data[0][0], &RAWDATA[0][0], TX_SZ*RX_SZ*sizeof(afe_raw_data[0][0]));
 					PROC_SetData(&hproc, (float32_t*) afe_raw_data, (float32_t*) DIFF_BASELINE);
 
 					PROC_DifferentialStrength(&hproc);

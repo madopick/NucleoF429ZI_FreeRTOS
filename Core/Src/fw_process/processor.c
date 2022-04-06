@@ -6,7 +6,7 @@
  */
 
 #include "processor.h"
-//#include "arm-regression-error/measure.h"
+#include "measure.h"
 #include "dwt_counter.h"
 #include <stdlib.h>
 #include "main.h"
@@ -390,36 +390,36 @@ void PROC_Filtered(struct Processor *p)
 void PROC_Profiler(struct Processor *p)
 {
   volatile float f32_duration;
-//  volatile float f32_snr;
-//  volatile float f32_mse;
-//  volatile float f32_rmse;
-//  volatile float f32_mae;
-//  volatile float f32_r2;
-//  float *pRef, *pTest;
-//
-//  /* Count section duration */
+  volatile float f32_snr;
+  volatile float f32_mse;
+  volatile float f32_rmse;
+  volatile float f32_mae;
+  volatile float f32_r2;
+  float *pRef, *pTest;
+
+  /* Count section duration */
   f32_duration = get_duration_ms(p);
 
   /* Calculate metrics */
-//  pRef = (float32_t*) FILTERED_REF;
-//  pTest = p->filtered;
+  pRef = (float32_t*) FILTERED_REF;
+  pTest = p->filtered;
 
-//  f32_snr = arm_snr_f32(pRef, pTest, TR_SZ);
-//  f32_mae = arm_mae_f32(pRef, pTest, TR_SZ);
-//  f32_mse = arm_mse_f32(pRef, pTest, TR_SZ);
-//  f32_rmse = arm_rmse_f32(pRef, pTest, TR_SZ);
-//  f32_r2 = arm_rsquare_f32(pRef, pTest, TR_SZ);
-//
-//  /* Print to stdout */
+  f32_snr = arm_snr_f32(pRef, pTest, TR_SZ);
+  f32_mae = arm_mae_f32(pRef, pTest, TR_SZ);
+  f32_mse = arm_mse_f32(pRef, pTest, TR_SZ);
+  f32_rmse = arm_rmse_f32(pRef, pTest, TR_SZ);
+  f32_r2 = arm_rsquare_f32(pRef, pTest, TR_SZ);
+
+  /* Print to stdout */
   printf("Frame Duration: %.2f ms\r\n", f32_duration);
-//  printf("Frame SNR: %.6f dB\r\n", f32_snr);
-//  printf("Frame MAE: %.6f \r\n", f32_mae);
-//  printf("Frame MSE: %.6f \r\n", f32_mse);
-//  printf("Frame RMSE: %.6f \r\n", f32_rmse);
-//  printf("Frame R-Square: %.6f \r\n", f32_r2);
-//  print_array_f32(pTest, TX_SZ, RX_SZ);
-//
-//  __BKPT(0);
+  printf("Frame SNR: %.6f dB\r\n", f32_snr);
+  printf("Frame MAE: %.6f \r\n", f32_mae);
+  printf("Frame MSE: %.6f \r\n", f32_mse);
+  printf("Frame RMSE: %.6f \r\n", f32_rmse);
+  printf("Frame R-Square: %.6f \r\n", f32_r2);
+  print_array_f32(pTest, TX_SZ, RX_SZ);
+
+  __BKPT(0);
 }
 
 /* Private function definitions */
